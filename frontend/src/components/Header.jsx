@@ -2,53 +2,89 @@ import { NavLink } from "react-router-dom";
 
 function Header() {
   return (
-    <header className="bg-blue-300 flex">
-      {/* Logos */}
-      <h1>
-        <NavLink to="/">Furever</NavLink>
-      </h1>
+    <nav className="navbar">
+      <ul className="flex justify-between p-4 bg-[#ffebcd]">
+        <li>
+          <NavLink to="/" className="block px-4 py-2 cursor-pointer">
+            Home
+          </NavLink>
+        </li>
 
-      {/* Navigation Bar */}
-      <div>
-        <nav>
-          <ul>
-            <li>
+        <ul className="flex gap-10">
+          <li className="relative group">
+            <span className="block px-4 py-2 hover:text-gray-500 rounded cursor-pointer">
               Adopt or Support
-              <ul>
-                <li>
-                  <NavLink to="/adopt">Find a Pet</NavLink>
-                </li>
-                <li>
-                  <NavLink to="/event">Events</NavLink>
-                </li>
-                <li>
-                  <NavLink to="/volunteer">Volunteers</NavLink>
-                </li>
-                <li>
-                  <NavLink to="/ngo">NGO List</NavLink>
-                </li>
-                <li>
-                  <NavLink to="/map">Map</NavLink>
-                </li>
-              </ul>
-            </li>
-            <li>
-              <NavLink to="/article">Furticle</NavLink>
-            </li>
-            <li>
-              <NavLink to="/surrender">Surrender</NavLink>
-            </li>
-          </ul>
-        </nav>
-      </div>
+            </span>
+            <ul className="text-black hidden absolute top-full group-hover:block bg-white shadow-lg p-4 space-y-2 min-w-full rounded-lg z-50">
+              <li>
+                <NavLink
+                  to="/adopt"
+                  className="block px-1 py-2 hover:text-gray-500"
+                >
+                  Find a Pet
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/event"
+                  className="block px-1 py-2 hover:text-gray-500"
+                >
+                  Events
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/volunteer"
+                  className="block px-1 py-2 hover:text-gray-500"
+                >
+                  Volunteers
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/ngo"
+                  className="block px-1 py-2 hover:text-gray-500"
+                >
+                  NGO List
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to="/map"
+                  className="block px-1 py-2 hover:text-gray-500"
+                >
+                  Map
+                </NavLink>
+              </li>
+            </ul>
+          </li>
 
-      {/* Sign up Button */}
-      <div>
-        <button>
-          <NavLink to="/signin">Sign In</NavLink>
-        </button>
-      </div>
-    </header>
+          <li>
+            <NavLink
+              to="/article"
+              className="block px-4 py-2 hover:text-gray-500"
+            >
+              Furticle
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/surrender"
+              className="block px-4 py-2 hover:text-gray-500"
+            >
+              Surrender
+            </NavLink>
+          </li>
+        </ul>
+
+        <li>
+          <NavLink to="/signin" className="block px-4 py-2 hover:text-gray-500">
+            Sign In
+          </NavLink>
+        </li>
+      </ul>
+    </nav>
   );
 }
+
 export default Header;

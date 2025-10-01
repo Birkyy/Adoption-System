@@ -13,22 +13,24 @@ import Map from "./pages/Map";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="adopt" element={<PetList />} />
-          <Route path="signin" element={<SignIn />} />
-          <Route path="register" element={<Register />} />
-          <Route path="surrender" element={<Surrender />} />
-          <Route path="article" element={<Article />} />
-          <Route path="event" element={<Event />} />
-          <Route path="volunteer" element={<Volunteer />} />
-          <Route path="ngo" element={<NGOList />} />
-          <Route path="map" element={<Map />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="adopt" element={<PetList />} />
+            <Route path="signin" element={<SignIn />} />
+            <Route path="register" element={<Register />} />
+            <Route path="surrender" element={<Surrender />} />
+            <Route path="article" element={<Article />} />
+            <Route path="event" element={<Event />} />
+            <Route path="volunteer" element={<Volunteer />} />
+            <Route path="ngo" element={<NGOList />} />
+            <Route path="map" element={<Map />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 

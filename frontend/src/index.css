@@ -1,1 +1,32 @@
 @import "tailwindcss";
+
+@font-face {
+    font-family: 'Alan Sans';
+    src: url('./assets/fonts/AlanSans-VariableFont_wght.ttf') format('truetype-variations');
+    font-weight: 100 900;
+    font-style: normal;
+}
+
+@theme {
+  --font-family-alan-sans: 'Alan Sans', sans-serif;
+}
+
+.navbar {
+  font-family: 'Alan Sans', sans-serif;
+}
+
+.h-color{
+    color: #422200;
+}
+
+.p-color{
+    color: #6d481d;
+}
+
+.btn-color{
+    background-color: #ffad33;
+}
+
+.btn-color:hover{
+    background-color: hsl(36, 100%, 40%);
+}
