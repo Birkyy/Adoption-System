@@ -3,6 +3,7 @@ import dog from "../assets/images/home-dog.png";
 function Home() {
   return (
     <div>
+      {/* Welcome Section */}
       <section className="h-screen bg-[#ffebcd] flex items-center justify-center pb-40 relative overflow-hidden">
         {/* Background decorative elements */}
         <div className="absolute inset-0 pointer-events-none">
@@ -43,6 +44,7 @@ function Home() {
           </div>
         </div>
       </section>
+
       <section className="h-screen"></section>
     </div>
   );

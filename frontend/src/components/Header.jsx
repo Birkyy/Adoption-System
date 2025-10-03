@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 function Header() {
   return (
     <nav className="navbar">
-      <ul className="flex justify-between p-4 bg-[#ffebcd]">
+      <ul className="flex justify-between p-4 bg-[#ffebcd] text-xl">
         <li>
           <NavLink to="/" className="block px-4 py-2 cursor-pointer">
             Home
