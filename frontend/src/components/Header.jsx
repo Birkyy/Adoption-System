@@ -1,9 +1,14 @@
 import { NavLink } from "react-router-dom";
 
-function Header() {
+function Header({ overlay = false }) {
   return (
-    <nav className="navbar">
-      <ul className="flex justify-between p-4 bg-[#ffebcd] text-xl">
+    // Header.jsx
+    <nav
+      className={`navbar ${
+        overlay ? "absolute top-0 left-0 right-0 z-50 w-full" : "w-full"
+      }`}
+    >
+      <ul className="flex justify-between p-4 bg-transparent text-md">
         <li>
           <NavLink to="/" className="block px-4 py-2 cursor-pointer">
             Home
