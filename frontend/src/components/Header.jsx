@@ -1,6 +1,26 @@
 import { NavLink } from "react-router-dom";
+import { useSlide } from "../contexts/SlideContext";
 
 function Header({ overlay = false }) {
+  const { currentSlideIndex } = useSlide();
+
+  // Define text colors for each slide
+  const getTextColor = () => {
+    switch (currentSlideIndex) {
+      case 0: // amber-600 background
+        return "text-white";
+      case 1: // amber-500 background
+        return "text-amber-900";
+      case 2: // amber-400 background
+        return "text-amber-800";
+      default:
+        return "text-black";
+    }
+  };
+
+  const textColor = getTextColor();
+  const hoverColor =
+    currentSlideIndex === 0 ? "hover:text-amber-300" : "hover:text-gray-500";
   return (
     // Header.jsx
     <nav
@@ -8,16 +28,23 @@ function Header({ overlay = false }) {
         overlay ? "absolute top-0 left-0 right-0 z-50 w-full" : "w-full"
       }`}
     >
-      <ul className="flex justify-between p-4 bg-transparent text-md">
+      <ul
+        className={`flex justify-between p-4 bg-transparent text-lg font-semibold transition-colors duration-500 ease-in-out ${textColor}`}
+      >
         <li>
-          <NavLink to="/" className="block px-4 py-2 cursor-pointer">
+          <NavLink
+            to="/"
+            className={`block px-4 py-2 cursor-pointer ${hoverColor}`}
+          >
             Home
           </NavLink>
         </li>
 
         <ul className="flex gap-10">
           <li className="relative group">
-            <span className="block px-4 py-2 hover:text-gray-500 rounded cursor-pointer">
+            <span
+              className={`block px-4 py-2 ${hoverColor} rounded cursor-pointer`}
+            >
               Adopt or Support
             </span>
             <ul className="text-black hidden absolute top-full group-hover:block bg-white shadow-lg p-4 space-y-2 min-w-full rounded-lg z-50">
@@ -65,17 +92,14 @@ function Header({ overlay = false }) {
           </li>
 
           <li>
-            <NavLink
-              to="/article"
-              className="block px-4 py-2 hover:text-gray-500"
-            >
+            <NavLink to="/article" className={`block px-4 py-2 ${hoverColor}`}>
               Furticle
             </NavLink>
           </li>
           <li>
             <NavLink
               to="/surrender"
-              className="block px-4 py-2 hover:text-gray-500"
+              className={`block px-4 py-2 ${hoverColor}`}
             >
               Surrender
             </NavLink>
@@ -83,7 +107,7 @@ function Header({ overlay = false }) {
         </ul>
 
         <li>
-          <NavLink to="/signin" className="block px-4 py-2 hover:text-gray-500">
+          <NavLink to="/signin" className={`block px-4 py-2 ${hoverColor}`}>
             Sign In
           </NavLink>
         </li>
