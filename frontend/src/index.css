@@ -42,8 +42,3 @@
 .btn-color:hover{
     background-color: hsl(36, 100%, 40%);
 }
-
-/* Prevent scroll chaining/bounce above the top of the page */
-html, body {
-    overscroll-behavior-y: none;
-}

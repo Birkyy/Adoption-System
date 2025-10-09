@@ -8,13 +8,12 @@ function Layout() {
   const isHome = location.pathname === "/";
   return (
     <SlideProvider>
-      <div className="flex flex-col min-h-screen overflow-hidden">
+      <div className="flex flex-col min-h-screen min-w-screen">
         <Header overlay={isHome} />
-        <div className="flex flex-1 overflow-hidden">
-          <main className="flex-1 bg-white overflow-hidden">
-            <Outlet />
-          </main>
-        </div>
+
+        <main className="bg-white flex-1">
+          <Outlet />
+        </main>
 
         <Footer />
       </div>

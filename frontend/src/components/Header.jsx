@@ -7,20 +7,31 @@ function Header({ overlay = false }) {
   // Define text colors for each slide
   const getTextColor = () => {
     switch (currentSlideIndex) {
-      case 0: // amber-600 background
+      case 0:
+      case 1:
+      case 2:
         return "text-white";
-      case 1: // amber-500 background
-        return "text-amber-900";
-      case 2: // amber-400 background
-        return "text-amber-800";
+      default:
+        return "text-black";
+    }
+  };
+
+  const getHoverColor = () => {
+    switch (currentSlideIndex) {
+      case 0:
+        return "hover:text-amber-300";
+      case 1:
+        return "hover:text-[hsl(18,100%,80%)]";
+      case 2:
+        return "hover:text-[hsl(24,51%,46%)]";
       default:
         return "text-black";
     }
   };
 
   const textColor = getTextColor();
-  const hoverColor =
-    currentSlideIndex === 0 ? "hover:text-amber-300" : "hover:text-gray-500";
+  const hoverColor = getHoverColor();
+
   return (
     // Header.jsx
     <nav
@@ -40,7 +51,7 @@ function Header({ overlay = false }) {
           </NavLink>
         </li>
 
-        <ul className="flex gap-10">
+        <ul className="flex gap-10 transition-colors duration-500 ease-in-out">
           <li className="relative group">
             <span
               className={`block px-4 py-2 ${hoverColor} rounded cursor-pointer`}
