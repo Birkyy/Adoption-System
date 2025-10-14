@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Pets from "../assets/images/pets.png";
 import PetOwner1 from "../assets/images/pet-owner-1.png";
 import Volunteer1 from "../assets/images/volunteer-1.png";
 import Volunteer2 from "../assets/images/volunteer-2.png";
-import LeftArrow from "../assets/icons/left-arrow.svg";
-import RightArrow from "../assets/icons/right-arrow.svg";
 import Paw from "../assets/icons/paw.svg";
 import DogFood from "../assets/icons/dog-food.svg";
 import PetBowl from "../assets/icons/pet-bowl.svg";
@@ -14,6 +12,7 @@ import { useSlide } from "../contexts/SlideContext";
 
 function Slider() {
   const { setCurrentSlideIndex } = useSlide();
+
   const slides = [
     // Slide 1
     {
@@ -78,7 +77,7 @@ function Slider() {
       bg: "bg-[#ff8550]",
       content: (
         <div className="flex lg:flex-row flex-col justify-center items-center min-w-3xs md:min-w-5xl xl:min-w-7xl h-full md:gap-5 xl:gap-10 relative">
-          {/* Derocation */}
+          {/* Decoration */}
           <div className="z-0">
             <img
               src={DogFood}
@@ -126,7 +125,7 @@ function Slider() {
       bg: "bg-[#d5a07d]",
       content: (
         <div className="flex lg:flex-row flex-col-reverse justify-center items-center min-w-3xs md:min-w-5xl xl:min-w-7xl h-full xl:gap-10 relative">
-          {/* Derocation */}
+          {/* Decoration */}
           <div className="z-0">
             <img
               src={VolunteerIcon}
@@ -171,55 +170,85 @@ function Slider() {
   ];
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const intervalMs = 10000; //autoplay duration
+  const intervalMs = 10000; // autoplay duration
+  const intervalRef = useRef(null);
 
-  // Define arrow colors for each slide
+  // Define arrow colors for each slide (adjust if needed)
   const getArrowColor = () => {
     switch (currentIndex) {
-      case 0: // amber-600 background
-        return "filter brightness-0 invert"; // White arrows
-      case 1: // amber-500 background
-        return "filter brightness-0 invert"; // Black arrows
-      case 2: // amber-400 background
-        return "filter brightness-0 invert"; // Black arrows
+      case 0:
+        return "text-white";
+      case 1:
+        return "text-white";
+      case 2:
+        return "text-white";
       default:
-        return "filter brightness-0"; // Default black arrows
+        return "filter brightness-0";
     }
   };
-
   const arrowColor = getArrowColor();
 
-  // Sync context with current index on mount and when currentIndex changes
+  // Sync context with current index
   useEffect(() => {
     setCurrentSlideIndex(currentIndex);
   }, [currentIndex, setCurrentSlideIndex]);
+
+  // clear interval helper
+  const clearTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  // start the autoplay interval
+  const startTimer = () => {
+    clearTimer();
+    intervalRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
+    }, intervalMs);
+  };
+
+  // reset timer after manual action
+  const resetTimer = () => {
+    startTimer();
+  };
+
+  // start timer on mount and whenever interval or slide count changes
+  useEffect(() => {
+    startTimer();
+    return () => clearTimer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intervalMs, slides.length]);
 
   function showPrev() {
     const newIndex = (currentIndex - 1 + slides.length) % slides.length;
     setCurrentIndex(newIndex);
     setCurrentSlideIndex(newIndex);
+    resetTimer();
   }
 
   function showNext() {
     const newIndex = (currentIndex + 1) % slides.length;
     setCurrentIndex(newIndex);
     setCurrentSlideIndex(newIndex);
+    resetTimer();
   }
 
-  // // Always-on autoplay
-  // useEffect(
-  //   () => {
-  //     //Change slide after 10 secs
-  //     const id = setInterval(() => {
-  //       setCurrentIndex((prev) => (prev + 1) % slides.length);
-  //     }, intervalMs);
-
-  //     //Clear the old timer
-  //     return () => clearInterval(id);
-  //   },
-  //   //rerun if any of the value changes
-  //   [intervalMs, slides.length]
-  // );
+  // Keyboard accessibility: left/right arrows to navigate
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "ArrowLeft") {
+        showPrev();
+      } else if (e.key === "ArrowRight") {
+        showNext();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // We intentionally don't include showPrev/showNext in deps to avoid re-adding listener too often.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, slides.length]);
 
   return (
     <div className="carousel h-screen w-screen relative overflow-hidden overscroll-contain">
@@ -232,7 +261,7 @@ function Slider() {
             key={slide.id}
             className={`item ${slide.bg} min-w-full h-full relative`}
           >
-            <div className="absolute top-1/2 left-1/2 -translate-1/2 text-white">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white">
               {slide.content}
             </div>
           </div>
@@ -243,25 +272,48 @@ function Slider() {
         type="button"
         aria-label="Previous slide"
         onClick={showPrev}
-        className="w-10 h-10 flex z-50 absolute left-2 top-1/2 -translate-y-1/2 justify-center items-center cursor-pointer"
+        className="w-10 h-10 flex z-50 absolute left-2 top-1/2 -translate-y-1/2 justify-center items-center cursor-pointer text-white hover:text-gray-300 transition delay-150 duration-300 ease-in-out"
       >
-        <img
-          src={LeftArrow}
-          alt=""
-          className={`transition-all duration-500 ease-in-out ${arrowColor}`}
-        />
+        {/* Left Arrow */}
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M15 18L9 12L15 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
+
       <button
         type="button"
         aria-label="Next slide"
         onClick={showNext}
-        className="w-10 h-10 flex z-50 absolute right-2 top-1/2 -translate-y-1/2 justify-center items-center cursor-pointer"
+        className="w-10 h-10 flex z-50 absolute right-2 top-1/2 -translate-y-1/2 justify-center items-center cursor-pointer text-white hover:text-gray-300 transition delay-150 duration-300 ease-in-out"
       >
-        <img
-          src={RightArrow}
-          alt=""
-          className={`transition-all duration-500 ease-in-out ${arrowColor}`}
-        />
+        {/* Right Arrow */}
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M9 18L15 12L9 6"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
       </button>
 
       {/* Dots indicators */}
@@ -274,6 +326,7 @@ function Slider() {
             onClick={() => {
               setCurrentIndex(idx);
               setCurrentSlideIndex(idx);
+              resetTimer();
             }}
             className={
               `h-2 w-2 rounded-full transition-colors duration-200 ` +

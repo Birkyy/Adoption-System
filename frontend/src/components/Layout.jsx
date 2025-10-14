@@ -2,6 +2,7 @@ import Header from "./Header";
 import Footer from "./Footer";
 import { Outlet, useLocation } from "react-router-dom";
 import { SlideProvider } from "../contexts/SlideContext";
+import BackButton from "./BackButton";
 
 function Layout() {
   const location = useLocation();
@@ -14,7 +15,7 @@ function Layout() {
         <main className="bg-white flex-1">
           <Outlet />
         </main>
-
+        <BackButton />
         <Footer />
       </div>
     </SlideProvider>

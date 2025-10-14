@@ -14,9 +14,17 @@
     font-style: normal;
 }
 
+@font-face {
+    font-family: 'Gloria Hallelujah';
+    src: url('./assets/fonts/GloriaHallelujah-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 @theme {
   --font-family-alan-sans: 'Alan Sans', sans-serif;
   --font-family-fredoka: 'Fredoka', sans-serif;
+  --font-family-gloria: 'Gloria Hallelujah', cursive;
 }
 
 .navbar {
@@ -25,6 +33,10 @@
 
 .fredoka {
   font-family: 'Fredoka', sans-serif;
+}
+
+.gloria {
+  font-family: 'Gloria Hallelujah', cursive;
 }
 
 .h-color{
@@ -42,3 +54,55 @@
 .btn-color:hover{
     background-color: hsl(36, 100%, 40%);
 }
+
+html{
+  scroll-snap-type: y mandatory;
+  margin: 0;
+  overscroll-behavior: none;
+  box-sizing: border-box;
+}
+
+ol.adopt-list {
+	list-style-position: inside;
+	background: white;
+	box-shadow: 0.25rem 0.25rem 0.75rem rgb(0 0 0 / 0.15);
+}
+
+ol.adopt-list li {
+	padding: 0 0 0 1rem;
+}
+
+ol.adopt-list li:not(:last-child) {
+	border-bottom: 1px solid lightblue;
+}
+
+ol.adopt-list li:first-child {
+	margin-top: 1rem;
+}
+
+ol.adopt-list li:last-child {
+	margin-bottom: 1rem;
+}
+
+/* Custom markers */
+ol.adopt-list li::marker {
+	--image: '📩 ';
+	content: counter(list-item) ' ' var(--image);
+}
+
+ol.adopt-list li:nth-child(2)::marker {
+	--image: '🐈 ';
+}
+
+ol.adopt-list li:nth-child(3)::marker {
+	--image: '🗑 ';
+}
+
+ol.adopt-list li:nth-child(4)::marker {
+	--image: '🪴 ';
+}
+
+ol.adopt-list li:nth-child(5)::marker {
+	--image: '🔑 ';
+}
+
