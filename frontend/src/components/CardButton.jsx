@@ -1,28 +1,39 @@
-const CardButton = ({ contents }) => {
+const CardButton = ({ contents, activeCategory, onCategoryChange }) => {
   return (
     <>
-      <div className="flex justify-center gap-3 sm:gap-7 lg:gap-15 xl:gap-40">
-        {contents.map((content) => (
-          <div
-            className="flex flex-col items-center text-center w-[90px] sm:w-[110px] md:w-[130px]"
-            key={content.id}
-          >
-            <button className="flex items-center justify-center rounded-full overflow-hidden p-3 bg-amber-200 w-[70px] h-[70px] sm:w-[90px] sm:h-[90px] md:w-[90px] md:h-[90px] lg:(w-[120px] h-[120px]) xl:(w-[160px] h-[160px])">
-              <a href="#">
-                <img
-                  src={content.image}
-                  alt={content.title}
-                  className="w-full h-full object-cover"
+      <div className="flex flex-row justify-center items-center min-w-60/100 relative z-10">
+        {contents.map((content) => {
+          const IconComponent = content.image;
+          const isActive = activeCategory === content.title;
+
+          return (
+            <button
+              key={content.id}
+              onClick={() => onCategoryChange(content.title)}
+              className={`rounded-xl overflow-hidden flex-1 transition-all duration-300 pt-4 pb-2 md:py-3`}
+            >
+              <div className="flex flex-col md:flex-row gap-1 md:gap-4 items-center justify-center text-[hsl(228,14%,50%)] hover:text-[#bc9da7] transition-all duration-500 ease-in-out">
+                <IconComponent
+                  className={`w-8 h-8 md:(w-12 h-12) transition-all duration-300 text-shadow-lg ${
+                    isActive ? "scale-110 text-[#2f4858]" : "scale-100"
+                  }`}
                 />
-              </a>
+                <h1
+                  className={`fredoka font-semibold text-lg md:text-2xl text-center transition-all duration-300 ${
+                    isActive
+                      ? "font-bold scale-120 text-[#2f4858] text-shadow-lg"
+                      : "font-semibold scale-100 text-shadow-sm"
+                  }`}
+                >
+                  {content.title}
+                </h1>
+              </div>
             </button>
-            <h2 className="fredoka font-semibold text-sm sm:text-lg mt-2 leading-tight tracking-wide">
-              {content.title}
-            </h2>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );
 };
+
 export default CardButton;

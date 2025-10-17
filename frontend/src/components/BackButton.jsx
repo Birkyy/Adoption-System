@@ -1,5 +1,6 @@
 import Cat from "../assets/mp3/cat.mp3";
 import Elevator from "elevator.js";
+import Button from "../assets/icons/back-to-top.svg";
 
 function BackButton() {
   const handleElevator = () => {
@@ -26,10 +27,14 @@ function BackButton() {
   return (
     <>
       <div
-        className="elevator-button fixed bottom-4 right-4 rounded-full bg-white shadow-lg p-10 cursor-pointer"
+        className="elevator-button group fixed bottom-10 right-10 rounded-full bg-white shadow-lg p-5 cursor-pointer transition"
         onClick={handleElevator}
       >
-        Testing
+        <img
+          src={Button}
+          alt="Back to top"
+          className="w-5 h-5 group-hover:animate-bounce"
+        />
       </div>
     </>
   );

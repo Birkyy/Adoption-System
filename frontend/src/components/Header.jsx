@@ -83,22 +83,6 @@ function Header({ overlay = false }) {
                   Volunteers
                 </NavLink>
               </li>
-              <li>
-                <NavLink
-                  to="/ngo"
-                  className="block px-1 py-2 hover:text-gray-500"
-                >
-                  NGO List
-                </NavLink>
-              </li>
-              <li>
-                <NavLink
-                  to="/map"
-                  className="block px-1 py-2 hover:text-gray-500"
-                >
-                  Map
-                </NavLink>
-              </li>
             </ul>
           </li>
 
@@ -107,14 +91,14 @@ function Header({ overlay = false }) {
               Furticle
             </NavLink>
           </li>
-          <li>
+          {/* <li>
             <NavLink
               to="/surrender"
               className={`block px-4 py-2 ${hoverColor}`}
             >
               Surrender
             </NavLink>
-          </li>
+          </li> */}
         </ul>
 
         <li>
