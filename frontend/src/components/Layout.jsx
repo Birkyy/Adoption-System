@@ -6,17 +6,18 @@ import BackButton from "./BackButton";
 
 function Layout() {
   const location = useLocation();
-  const isHome = location.pathname === "/";
+  const isHome = location.pathname === ("/" || "/home");
+
   return (
     <SlideProvider>
       <div className="flex flex-col min-h-screen min-w-screen">
-        <Header overlay={isHome} />
+        {isHome && <Header overlay={isHome} />}
 
         <main className="bg-white flex-1">
           <Outlet />
         </main>
-        <BackButton />
-        <Footer />
+        {isHome && <BackButton />}
+        {isHome && <Footer />}
       </div>
     </SlideProvider>
   );

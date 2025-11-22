@@ -10,6 +10,8 @@ import Event from "./pages/Event";
 import Volunteer from "./pages/Volunteer";
 import NGOList from "./pages/NGOList";
 import Map from "./pages/Map";
+import PetDetail from "./pages/PetDetail";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
             <Route path="volunteer" element={<Volunteer />} />
             <Route path="ngo" element={<NGOList />} />
             <Route path="map" element={<Map />} />
+            <Route path="petdetail" element={<PetDetail />}></Route>
+            <Route path="profile" element={<Profile />}></Route>
           </Route>
         </Routes>
       </BrowserRouter>
