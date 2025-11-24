@@ -13,7 +13,7 @@ namespace backend.Models.Domain
         public string ApplicantId { get; set; } = null!;
 
         [BsonRepresentation(BsonType.ObjectId)]
-        public string AnimalId { get; set; } = null!;
+        public string PetId { get; set; } = null!;
 
         [BsonRepresentation(BsonType.ObjectId)]
         public string NgoId { get; set; } = null!;

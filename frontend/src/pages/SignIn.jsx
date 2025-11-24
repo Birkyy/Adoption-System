@@ -1,144 +1,241 @@
-import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { loginUser } from "../API/AuthAPI";
+import { useAuth } from "../contexts/AuthContext"; // <--- 1. Import the Hook
 import Dog from "../assets/images/welcoming-dog.png";
 import Food from "../assets/images/pet-food.png";
 
+// Import Toast
+import toast, { Toaster } from "react-hot-toast";
+
 function SignIn() {
+  const navigate = useNavigate();
+
+  // 2. Get the login function and user state from Context
+  const { login, user } = useAuth();
+
+  // Form States
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState("");
+
+  // Image Loading States
+  const [dogLoaded, setDogLoaded] = useState(false);
+  const [foodLoaded, setFoodLoaded] = useState(false);
+
+  // 3. CHECK IF USER IS ALREADY LOGGED IN (Using Context User)
+  useEffect(() => {
+    // If the Context has a user, redirect them
+    if (user) {
+      if (user.userRole === "Admin") {
+        navigate("/admin-dashboard");
+      } else if (user.userRole === "NGO") {
+        navigate("/ngo-dashboard");
+      } else {
+        navigate("/");
+      }
+    }
+  }, [user, navigate]);
+
+  const handleLogin = async () => {
+    setError("");
+
+    const loadingToast = toast.loading("Signing in...");
+
+    try {
+      const userData = await loginUser(email, password);
+
+      // 4. USE CONTEXT LOGIN
+      // This updates the global state immediately (fixing the header)
+      // and handles the localStorage/sessionStorage logic inside the context.
+      login(userData, rememberMe);
+
+      // Success Toast
+      toast.dismiss(loadingToast);
+      toast.success(`Welcome back, ${userData.name}!`);
+
+      // The useEffect above will detect the state change and redirect automatically.
+      // However, we can keep a small timeout for visual smoothness if desired.
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error("Invalid email or password.");
+      setError("Invalid email or password.");
+    }
+  };
+
   return (
-    <>
-      <div class="min-h-screen flex flex-col items-center justify-center bg-gray-100 relative overflow-hidden">
-        <div class="py-5 max-lg:px-12 lg:(pl-25 pr-15)">
-          <div class="grid lg:grid-cols-2 items-center justify-center max-w-6xl w-full relative z-10 shadow-2xl rounded-2xl">
-            <div class="px-8 py-10 max-lg:mx-auto bg-white lg:rounded-l-2xl max-lg:rounded-2xl">
-              <form class="space-y-6">
-                <div class="mb-10">
-                  <h1 class="text-slate-900 text-3xl font-semibold fredoka tracking-wide text-shadow-md">
-                    Welcome back!
-                  </h1>
-                  <p class="text-slate-600 text-md mt-4 leading-relaxed fredoka">
-                    Sign in to find your next furry friend and stay connected.
-                  </p>
-                </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 relative overflow-hidden">
+      {/* TOASTER COMPONENT */}
+      <Toaster position="top-center" reverseOrder={false} />
 
-                <div className="fredoka">
-                  <label class="text-slate-900 text-sm font-medium mb-2 block text-shadow-sm">
-                    Username
-                  </label>
-                  <div class="relative flex items-center">
-                    <input
-                      name="username"
-                      type="text"
-                      required
-                      class="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-[hsl(239,100%,65%)] focus:ring-[hsl(239,100%,75%)]"
-                      placeholder="Enter username"
-                    />
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="#bbb"
-                      stroke="#bbb"
-                      class="w-[18px] h-[18px] absolute right-4"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        cx="10"
-                        cy="7"
-                        r="6"
-                        data-original="#000000"
-                      ></circle>
-                      <path
-                        d="M14 15H6a5 5 0 0 0-5 5 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 5 5 0 0 0-5-5zm8-4h-2.59l.3-.29a1 1 0 0 0-1.42-1.42l-2 2a1 1 0 0 0 0 1.42l2 2a1 1 0 0 0 1.42 0 1 1 0 0 0 0-1.42l-.3-.29H22a1 1 0 0 0 0-2z"
-                        data-original="#000000"
-                      ></path>
-                    </svg>
-                  </div>
-                </div>
-                <div className="fredoka">
-                  <label class="text-slate-900 text-sm font-medium mb-2 block text-shadow-sm">
-                    Password
-                  </label>
-                  <div class="relative flex items-center">
-                    <input
-                      name="password"
-                      type="password"
-                      required
-                      // SWAPPED: Default outline is the darker blue, focus ring is the lighter blue
-                      class="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-[hsl(239,100%,65%)] focus:ring-[hsl(239,100%,75%)]"
-                      placeholder="Enter password"
-                    />
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="#bbb"
-                      stroke="#bbb"
-                      class="w-[18px] h-[18px] absolute right-4 cursor-pointer"
-                      viewBox="0 0 128 128"
-                    >
-                      <path
-                        d="M64 104C22.127 104 1.367 67.496.504 65.943a4 4 0 0 1 0-3.887C1.367 60.504 22.127 24 64 24s62.633 36.504 63.496 38.057a4 4 0 0 1 0 3.887C126.633 67.496 105.873 104 64 104zM8.707 63.994C13.465 71.205 32.146 96 64 96c31.955 0 50.553-24.775 55.293-31.994C114.535 56.795 95.854 32 64 32 32.045 32 13.447 56.775 8.707 63.994zM64 88c-13.234 0-24-10.766-24-24s10.766-24 24-24 24 10.766 24 24-10.766 24-24 24zm0-40c-8.822 0-16 7.178-16 16s7.178 16 16 16 16-7.178 16-16-7.178-16-16-16z"
-                        data-original="#000000"
-                      ></path>
-                    </svg>
-                  </div>
-                </div>
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                  <div class="flex items-center">
-                    <input
-                      id="remember-me"
-                      name="remember-me"
-                      type="checkbox"
-                      // SWAPPED: Default checkbox is the darker blue, focus ring is the lighter blue
-                      class="h-4 w-4 shrink-0 text-[hsl(239,100%,65%)] focus:ring-[hsl(239,100%,75%)] border-slate-300 rounded"
-                    />
-                    <label
-                      for="remember-me"
-                      class="ml-2 block text-sm text-slate-900 fredoka"
-                    >
-                      Remember me
-                    </label>
-                  </div>
-                  <div class="text-sm">
-                    <a
-                      href="javascript:void(0);"
-                      class="text-[hsl(239,100%,70%)] hover:(text-[hsl(239,100%,55%)] underline) transition-colors duration-100 ease-in-out font-medium fredoka"
-                    >
-                      Forgot your password?
-                    </a>
-                  </div>
-                </div>
+      <div className="py-5 max-lg:px-12 lg:(pl-25 pr-15)">
+        <div className="grid lg:grid-cols-2 items-center justify-center max-w-6xl w-full relative z-10 shadow-2xl rounded-2xl">
+          {/* LEFT COLUMN: FORM */}
+          <div className="px-8 py-10 max-lg:mx-auto bg-white lg:rounded-l-2xl max-lg:rounded-2xl">
+            <form className="space-y-6">
+              <div className="mb-10">
+                <h1 className="text-slate-900 text-3xl font-semibold fredoka tracking-wide text-shadow-md">
+                  Welcome back!
+                </h1>
+                <p className="text-slate-600 text-md mt-4 leading-relaxed fredoka">
+                  Sign in to find your next furry friend and stay connected.
+                </p>
+              </div>
 
-                <div class="!mt-10">
-                  <button
-                    type="button"
-                    class="w-full shadow-xl py-2.5 px-4 text-[15px] font-medium tracking-wide rounded-lg text-white bg-[hsl(239,100%,70%)] hover:bg-[hsl(239,100%,55%)] transition-colors duration-100 ease-in-out focus:outline-none cursor-pointer fredoka"
+              {/* Email Field */}
+              <div className="fredoka">
+                <label className="text-slate-900 text-sm font-medium mb-2 block text-shadow-sm">
+                  Email
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-[hsl(239,100%,65%)] focus:ring-[hsl(239,100%,75%)]"
+                    placeholder="Enter email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#bbb"
+                    className="w-[18px] h-[18px] absolute right-4"
                   >
-                    Sign in
-                  </button>
-                  <p class="text-sm !mt-6 text-center text-slate-600 fredoka">
-                    Don't have an account?{" "}
-                    <NavLink
-                      to="/register"
-                      className="text-[hsl(239,100%,70%)] hover:(text-[hsl(239,100%,55%)] underline) transition-colors duration-100 ease-in-out font-medium ml-1 whitespace-nowrap"
-                    >
-                      Register here
-                    </NavLink>
-                  </p>
+                    <path
+                      d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <rect
+                      x="3"
+                      y="5"
+                      width="18"
+                      height="14"
+                      rx="2"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                 </div>
-              </form>
-            </div>
-            <div className="bg-radial from-[#e3e0f3] to-[#bac7de] from-60% h-full w-full flex items-center justify-center rounded-r-2xl relative overflow-hidden">
-              <img
-                src={Dog}
-                class="w-3/4 max-lg:w-0 block object-cover relative z-10"
-                alt="Two dogs say welcome"
-              />
-              <img
-                src={Food}
-                alt=""
-                className="absolute w-2/7 h-2/7 right-1/8 bottom-1/8"
-              />
-            </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="fredoka">
+                <label className="text-slate-900 text-sm font-medium mb-2 block text-shadow-sm">
+                  Password
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    name="password"
+                    type="password"
+                    required
+                    className="w-full text-sm text-slate-900 border border-slate-300 pl-4 pr-10 py-3 rounded-lg outline-[hsl(239,100%,65%)] focus:ring-[hsl(239,100%,75%)]"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="#bbb"
+                    stroke="#bbb"
+                    className="w-[18px] h-[18px] absolute right-4 cursor-pointer"
+                    viewBox="0 0 128 128"
+                  >
+                    <path
+                      d="M64 104C22.127 104 1.367 67.496.504 65.943a4 4 0 0 1 0-3.887C1.367 60.504 22.127 24 64 24s62.633 36.504 63.496 38.057a4 4 0 0 1 0 3.887C126.633 67.496 105.873 104 64 104zM8.707 63.994C13.465 71.205 32.146 96 64 96c31.955 0 50.553-24.775 55.293-31.994C114.535 56.795 95.854 32 64 32 32.045 32 13.447 56.775 8.707 63.994zM64 88c-13.234 0-24-10.766-24-24s10.766-24 24-24 24 10.766 24 24-10.766 24-24 24zm0-40c-8.822 0-16 7.178-16 16s7.178 16 16 16 16-7.178 16-16-7.178-16-16-16z"
+                      data-original="#000000"
+                    ></path>
+                  </svg>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-red-500 text-sm text-center font-medium animate-pulse">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 shrink-0 text-[hsl(239,100%,65%)] focus:ring-[hsl(239,100%,75%)] border-slate-300 rounded"
+                  />
+                  <label
+                    htmlFor="remember-me"
+                    className="ml-2 block text-sm text-slate-900 fredoka"
+                  >
+                    Remember me
+                  </label>
+                </div>
+                <div className="text-sm">
+                  <a
+                    href="javascript:void(0);"
+                    className="text-[hsl(239,100%,70%)] hover:(text-[hsl(239,100%,55%)] underline) transition-colors duration-100 ease-in-out font-medium fredoka"
+                  >
+                    Forgot your password?
+                  </a>
+                </div>
+              </div>
+
+              <div className="!mt-10">
+                <button
+                  type="button"
+                  onClick={handleLogin}
+                  className="w-full shadow-xl py-2.5 px-4 text-[15px] font-medium tracking-wide rounded-lg text-white bg-[hsl(239,100%,70%)] hover:bg-[hsl(239,100%,55%)] transition-colors duration-100 ease-in-out focus:outline-none cursor-pointer fredoka"
+                >
+                  Sign in
+                </button>
+                <p className="text-sm !mt-6 text-center text-slate-600 fredoka">
+                  Don't have an account?{" "}
+                  <NavLink
+                    to="/register"
+                    className="text-[hsl(239,100%,70%)] hover:(text-[hsl(239,100%,55%)] underline) transition-colors duration-100 ease-in-out font-medium ml-1 whitespace-nowrap"
+                  >
+                    Register here
+                  </NavLink>
+                </p>
+              </div>
+            </form>
+          </div>
+
+          {/* RIGHT COLUMN: IMAGES */}
+          <div className="bg-radial from-[#e3e0f3] to-[#bac7de] from-60% h-full w-full flex items-center justify-center rounded-r-2xl relative overflow-hidden">
+            {/* DOG IMAGE */}
+            <img
+              src={Dog}
+              onLoad={() => setDogLoaded(true)} // Trigger fade-in when downloaded
+              className={`w-3/4 max-lg:w-0 block object-cover relative z-10 transition-opacity duration-1000 ease-out ${
+                dogLoaded
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+              alt="Two dogs say welcome"
+            />
+            {/* FOOD IMAGE */}
+            <img
+              src={Food}
+              onLoad={() => setFoodLoaded(true)} // Trigger fade-in when downloaded
+              alt=""
+              className={`absolute w-2/7 h-2/7 right-1/8 bottom-1/8 max-lg:hidden transition-opacity duration-1000 delay-200 ease-out ${
+                foodLoaded
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-4"
+              }`}
+            />
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

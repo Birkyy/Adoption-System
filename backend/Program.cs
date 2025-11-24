@@ -19,7 +19,9 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
 
 builder.Services.AddSingleton<PetService>();
 builder.Services.AddSingleton<UserService>();
-builder.Services.AddSingleton<AdminService>();
+builder.Services.AddSingleton<AdoptionService>();
+builder.Services.AddSingleton<ArticleService>();
+builder.Services.AddSingleton<EventService>();
 
 builder.Services.AddControllers();
 
@@ -28,6 +30,17 @@ builder.Services.AddEndpointsApiExplorer();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        "AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod();
+        }
+    );
+});
 
 var app = builder.Build();
 
@@ -38,6 +51,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowReactApp");
 
 app.UseAuthorization();
 

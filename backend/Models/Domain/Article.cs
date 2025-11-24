@@ -7,7 +7,7 @@ namespace backend.Models.Domain
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? Id { get; set; }
+        public string? ArticleId { get; set; }
 
         public string Title { get; set; } = null!;
 
@@ -21,5 +21,7 @@ namespace backend.Models.Domain
         public string Status { get; set; } = "Pending";
 
         public string? CoverImageUrl { get; set; }
+
+        public List<string> Categories { get; set; } = new List<string>();
     }
 }

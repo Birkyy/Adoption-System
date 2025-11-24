@@ -6,16 +6,25 @@ import BackButton from "./BackButton";
 
 function Layout() {
   const location = useLocation();
-  const isHome = location.pathname === ("/" || "/home");
+
+  const isHome = ["/", "/home"].includes(location.pathname);
+
+  const hideHeaderRoutes = ["/signin", "/register"];
+
+  const showHeader = !hideHeaderRoutes.includes(location.pathname);
 
   return (
     <SlideProvider>
       <div className="flex flex-col min-h-screen min-w-screen">
-        {isHome && <Header overlay={isHome} />}
+        <div id="elevator-target"></div>
+
+        {/* 3. Conditionally render the Header */}
+        {showHeader && <Header overlay={isHome} />}
 
         <main className="bg-white flex-1">
           <Outlet />
         </main>
+
         {isHome && <BackButton />}
         {isHome && <Footer />}
       </div>

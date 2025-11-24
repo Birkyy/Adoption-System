@@ -29,5 +29,9 @@ namespace backend.Models.Domain
 
         [BsonRepresentation(BsonType.ObjectId)]
         public List<string> ParticipantIds { get; set; } = new List<string>();
+
+        public List<string> ProposalDocuments { get; set; } = new List<string>();
+
+        public string? RejectionReason { get; set; }
     }
 }
