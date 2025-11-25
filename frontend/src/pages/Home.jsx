@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
+import { NavLink } from "react-router-dom";
 import Slider from "../components/Slider.jsx";
 import CardButton from "../components/CardButton.jsx";
 import Card from "../components/Card.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 
+// Import the separated API function
+import { getPetsBySpecies } from "../API/PetAPI";
+
+// Local Assets
 import Dog from "../assets/images/home-dog.png";
 import Cat from "../assets/images/cat.png";
 import PeekingCat from "../assets/images/peeking-cat.png";
@@ -34,6 +39,7 @@ function useResponsiveCards(contents) {
 
   useEffect(() => {
     const handleResize = () => {
+      // Adjust card count based on screen size
       if (window.innerWidth >= 1280) {
         setVisibleCards(contents.slice(0, 6));
       } else if (window.innerWidth >= 640) {
@@ -64,25 +70,35 @@ const preloadImages = (imageArray) => {
 };
 
 function Home() {
+  // Default category 'Dog' matches your API query
   const [activeCategory, setActiveCategory] = useState("Dog");
   const [petData, setPetData] = useState([]);
 
-  // Use the global flag for initial state
   const [isInitialLoad, setIsInitialLoad] = useState(!hasSeenLoader);
   const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
+      // Only show loading spinner on category switch, not initial load (handled by splash)
       if (!isInitialLoad) setIsFetching(true);
 
       try {
-        const response = await fetch(
-          `https://localhost:7001/api/Pets?species=${activeCategory}&status=Available`
-        );
-        if (!response.ok) throw new Error("Network error");
-        const data = await response.json();
-        setPetData(data);
+        // API Call using Axios function
+        const data = await getPetsBySpecies(activeCategory, "Available");
 
+        // Transform API data to match Card component props
+        const formattedData = data.map((pet) => ({
+          ...pet,
+          // Use the first photo from the array, or fallback to single imageUrl, or fallback to local default
+          image:
+            pet.photos && pet.photos.length > 0
+              ? pet.photos[0]
+              : pet.imageUrl || (pet.species === "Cat" ? Cat : Dog),
+        }));
+
+        setPetData(formattedData);
+
+        // Initial Splash Screen Logic
         if (isInitialLoad) {
           const criticalImages = [
             PeekingCat,
@@ -92,20 +108,24 @@ function Home() {
             SliderOwner,
             SliderVolunteer1,
             SliderVolunteer2,
-            ...data.slice(0, 6).map((p) => (p.imageUrl === "Dog" ? Dog : Cat)),
+            // Preload a few pet images if they exist
+            ...formattedData
+              .slice(0, 6)
+              .map((p) => p.image)
+              .filter(
+                (img) => typeof img === "string" && img.startsWith("http")
+              ),
           ];
 
           await preloadImages(criticalImages);
-
           hasSeenLoader = true;
-
           setTimeout(() => {
             setIsInitialLoad(false);
           }, 800);
         }
       } catch (error) {
         console.error(error);
-        setPetData([]);
+        setPetData([]); // Clear data on error
         setIsInitialLoad(false);
         hasSeenLoader = true;
       } finally {
@@ -120,22 +140,22 @@ function Home() {
 
   return (
     <>
-      {/* Only show LoadingScreen if we are in the Initial Load phase */}
       {isInitialLoad && <LoadingScreen />}
 
-      {/* Hide content overflow while loading to prevent scrollbar jumps */}
       <div className={isInitialLoad ? "h-screen w-screen overflow-hidden" : ""}>
         <section className="h-screen snap-start snap-always">
           <Slider />
         </section>
 
         <section className="relative min-h-screen snap-start bg-[#f8d6c4] flex flex-col items-center justify-center gap-5 sm:gap-7 lg:gap-5">
+          {/* Category Buttons */}
           <CardButton
             contents={BUTTON_CONTENTS}
             activeCategory={activeCategory}
             onCategoryChange={setActiveCategory}
           />
 
+          {/* Pet Grid */}
           <div className="max-sm:flex max-sm:flex-col max-sm:gap-y-10 grid grid-cols-2 gap-7 xl:(grid-cols-3 gap-10) relative z-10 min-h-[400px]">
             {isFetching ? (
               <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50">
@@ -160,22 +180,29 @@ function Home() {
                 </svg>
                 <p className="fredoka font-medium">Finding friends...</p>
               </div>
-            ) : (
+            ) : visibleCards.length > 0 ? (
               visibleCards.map((pet) => (
                 <Card
-                  key={pet.id}
-                  content={{
-                    ...pet,
-                    image: pet.imageUrl === "Dog" ? Dog : Cat,
-                  }}
+                  key={pet.petId || pet.id} // Ensure unique key using database ID
+                  content={pet} // Pass the full pet object
                 />
               ))
+            ) : (
+              <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50 mt-10">
+                <p className="fredoka font-medium text-lg">
+                  No pets found in this category yet.
+                </p>
+              </div>
             )}
           </div>
 
-          <button className="md:mt-5 fredoka font-semibold tracking-wide text-lg text-[hsl(228,14%,50%)] hover:(text-[#bc9da7] text-shadow-md) text-shadow-sm transition-all duration-500 ease-in-out cursor-pointer">
+          <NavLink
+            to="/adopt"
+            className="md:mt-5 fredoka font-semibold tracking-wide text-lg text-[hsl(228,14%,50%)] hover:(text-[#bc9da7] text-shadow-md) text-shadow-sm transition-all duration-500 ease-in-out cursor-pointer"
+          >
             Browse More
-          </button>
+          </NavLink>
+
           <img
             src={PeekingCat}
             alt=""
@@ -183,6 +210,7 @@ function Home() {
           />
         </section>
 
+        {/* ... Rest of your sections (Adoption Journey, Hero, Partner) remain unchanged ... */}
         <section className="relative min-h-screen snap-start snap-always bg-gray-100 flex items-center justify-center box-border w-full">
           <div className="flex flex-col items-center justify-center gap-3 lg:gap-8 relative z-10">
             <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold gloria">
@@ -198,9 +226,12 @@ function Home() {
               <li>You have a new friend!</li>
             </ol>
             <div className="flex flex-row gloria w-full gap-2">
-              <button className="flex-4 text-sm font-medium py-3 bg-[#009e8c] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-xl w-full cursor-pointer">
+              <NavLink
+                to="/adopt"
+                className="flex-4 text-sm font-medium py-3 bg-[#009e8c] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-xl w-full cursor-pointer text-center flex items-center justify-center"
+              >
                 Ready to Adopt?
-              </button>
+              </NavLink>
               <button className="flex-3 text-sm font-medium py-3 bg-amber-200 border-2 border-amber-800 hover:(bg-amber-500 border-amber-500 text-white) hover:transition-all duration-300 ease-in-out text-amber-800 rounded-3xl shadow-xl cursor-pointer">
                 Learn More
               </button>
@@ -249,6 +280,45 @@ function Home() {
             alt=""
             className="absolute top-0 left-0 max-md:h-13/100 max-lg:h-20/100 lg:w-22/100 z-0 overflow-hidden"
           />
+        </section>
+
+        <section className="relative min-h-screen snap-start snap-always bg-[#009e8c] flex items-center justify-center text-center px-6">
+          <div className="max-w-4xl text-white z-10 flex flex-col items-center gap-6">
+            <h2 className="text-3xl md:text-5xl font-bold gloria tracking-wide text-shadow-md">
+              Are you an NGO or Shelter?
+            </h2>
+            <p className="text-lg md:text-2xl fredoka font-light opacity-95 leading-relaxed max-w-2xl">
+              Partner with us to give more pets a loving home. Join our platform
+              to manage adoptions, organize events, and connect with a community
+              of animal lovers.
+            </p>
+            <NavLink
+              to="/partner"
+              className="mt-6 px-12 py-4 bg-amber-300 hover:bg-amber-200 text-teal-900 text-xl font-bold rounded-full shadow-xl transition-all transform hover:scale-105 hover:shadow-2xl fredoka border-2 border-amber-100"
+            >
+              Partner With Us
+            </NavLink>
+          </div>
+
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-10 pointer-events-none">
+            <svg
+              className="absolute -bottom-20 -right-20 w-96 h-96 text-white animate-pulse"
+              fill="currentColor"
+              viewBox="0 0 200 200"
+            >
+              <path
+                d="M45,-76C58,-69,68,-59,76,-48C84,-36,90,-23,91,-9C92,5,88,20,81,33C73,46,62,58,49,67C36,76,21,83,5,83C-11,82,-22,75,-33,66C-44,57,-55,47,-63,35C-71,23,-76,10,-75,-3C-74,-16,-67,-28,-58,-39C-49,-50,-38,-60,-26,-67C-14,-74,-1,-78,14,-80L45,-76Z"
+                transform="translate(100 100)"
+              />
+            </svg>
+            <svg
+              className="absolute top-20 left-10 w-60 h-60 text-white opacity-50"
+              fill="currentColor"
+              viewBox="0 0 200 200"
+            >
+              <circle cx="100" cy="100" r="50" />
+            </svg>
+          </div>
         </section>
       </div>
     </>

@@ -1,0 +1,22 @@
+import axios from "axios";
+
+const BASE_URL = "http://localhost:5118/api";
+
+export const getPets = async (filters = {}) => {
+  try {
+
+    const params = {
+      status: "Available",
+      ...filters
+    };
+
+    const response = await axios.get(`${BASE_URL}/Pets`, { params });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getPetsBySpecies = async (species, status = "Available") => {
+  return getPets({ species, status });
+};

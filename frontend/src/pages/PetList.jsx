@@ -1,351 +1,260 @@
-function PetList() {
+import React, { useState, useEffect } from "react";
+import { getPets } from "../API/PetAPI";
+import Card from "../components/Card";
+
+// Use a debounce hook to prevent API calls on every single keystroke
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
+export default function PetList() {
+  // --- STATE ---
+  const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filters matching your Domain Model
+  const [filters, setFilters] = useState({
+    species: "All", // "Dog", "Cat", "Other" or "All"
+    breed: "", // String search
+    gender: "All", // "Male", "Female"
+    age: "", // Number
+    search: "", // Name search
+  });
+
+  const debouncedBreed = useDebounce(filters.breed, 500);
+  const debouncedSearch = useDebounce(filters.search, 500);
+  const debouncedAge = useDebounce(filters.age, 500);
+
+  // --- FETCH DATA ---
+  useEffect(() => {
+    const fetchPets = async () => {
+      setLoading(true);
+      try {
+        // 1. Prepare params for API
+        const apiParams = {};
+        if (filters.species !== "All") apiParams.species = filters.species;
+        if (debouncedBreed) apiParams.breed = debouncedBreed;
+        if (debouncedSearch) apiParams.name = debouncedSearch;
+        if (debouncedAge) apiParams.age = parseInt(debouncedAge);
+
+        // 2. Call API
+        const data = await getPets(apiParams);
+
+        // 3. Client-side filtering for fields NOT in the Controller's Get() method
+        // (Your provided controller didn't have [FromQuery] string? gender)
+        let filteredData = data;
+
+        if (filters.gender !== "All") {
+          filteredData = filteredData.filter(
+            (pet) => pet.gender === filters.gender
+          );
+        }
+
+        setPets(filteredData);
+      } catch (error) {
+        console.error("Failed to fetch pets", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPets();
+  }, [
+    filters.species,
+    filters.gender,
+    debouncedBreed,
+    debouncedSearch,
+    debouncedAge,
+  ]);
+
+  // --- HANDLERS ---
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      species: "All",
+      breed: "",
+      gender: "All",
+      age: "",
+      search: "",
+    });
+  };
+
   return (
-    <>
-      <div class="flex">
-        <div class="w-full max-w-[280px] shrink-0 py-6">
-          <div class="flex items-center border-b border-gray-300 pb-4 px-6">
-            <h3 class="text-slate-900 text-lg font-semibold">Filter</h3>
+    <div className="min-h-screen bg-amber-50 pb-8 px-4">
+      {/* Main Container */}
+      <div className="flex flex-col lg:flex-row bg-white min-h-screen max-w-7xl mx-auto border-1 rounded-md border-gray-200 shadow-sm">
+        {/* --- SIDEBAR FILTERS --- */}
+        <div className="w-full lg:w-[280px] shrink-0 py-6 border-r border-gray-100">
+          <div className="flex items-center border-b border-gray-200 pb-4 px-6">
+            <h3 className="text-slate-900 text-lg font-bold font-fredoka">
+              Filters
+            </h3>
             <button
               type="button"
-              class="text-sm text-red-500 font-semibold ml-auto cursor-pointer"
+              onClick={clearFilters}
+              className="text-sm text-red-500 font-semibold ml-auto cursor-pointer hover:underline"
             >
               Clear all
             </button>
           </div>
 
-          <div class="border-r border-gray-300 divide-y divide-gray-300">
-            <div class="p-6">
-              <ul class="space-y-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="dog"
-                    name="animal"
-                    class="w-4 h-4 cursor-pointer"
-                    checked
-                  />
-                  <label
-                    for="dog"
-                    class="text-slate-900 font-semibold text-sm cursor-pointer"
-                  >
-                    Dog
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="cat"
-                    name="animal"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="cat"
-                    class="text-slate-900 font-semibold text-sm cursor-pointer"
-                  >
-                    Cat
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="other"
-                    name="animal"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="other"
-                    class="text-slate-900 font-semibold text-sm cursor-pointer"
-                  >
-                    Others
-                  </label>
-                </li>
+          <div className="divide-y divide-gray-200 font-fredoka">
+            {/* 1. SPECIES FILTER */}
+            <div className="p-6">
+              <h6 className="text-slate-900 text-sm font-bold mb-3">Animal</h6>
+              <ul className="space-y-3">
+                {["All", "Dog", "Cat", "Other"].map((type) => (
+                  <li key={type} className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      id={type}
+                      name="species"
+                      className="w-4 h-4 cursor-pointer accent-[#009e8c]"
+                      checked={filters.species === type}
+                      onChange={() => handleFilterChange("species", type)}
+                    />
+                    <label
+                      htmlFor={type}
+                      className="text-slate-700 font-medium text-sm cursor-pointer"
+                    >
+                      {type === "All" ? "All Animals" : type}
+                    </label>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            <div class="p-6">
-              <h6 class="text-slate-900 text-sm font-semibold">Breeds</h6>
-              <div class="flex px-3 py-1.5 rounded-md border border-gray-300 bg-gray-100 overflow-hidden mt-2">
+            {/* 2. BREED SEARCH */}
+            <div className="p-6">
+              <h6 className="text-slate-900 text-sm font-bold mb-2">Breed</h6>
+              <div className="flex px-3 py-2 rounded-md border border-gray-300 bg-gray-50 overflow-hidden">
                 <input
-                  type="email"
-                  placeholder="Search category"
-                  class="w-full bg-transparent outline-none text-gray-900 text-sm"
+                  type="text"
+                  placeholder="Search breed..."
+                  className="w-full bg-transparent outline-none text-gray-900 text-sm"
+                  value={filters.breed}
+                  onChange={(e) => handleFilterChange("breed", e.target.value)}
                 />
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 192.904 192.904"
-                  class="w-3 fill-gray-600"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  className="w-4 h-4 text-gray-500"
                 >
-                  <path d="m190.707 180.101-47.078-47.077c11.702-14.072 18.752-32.142 18.752-51.831C162.381 36.423 125.959 0 81.191 0 36.422 0 0 36.423 0 81.193c0 44.767 36.422 81.187 81.191 81.187 19.688 0 37.759-7.049 51.831-18.751l47.079 47.078a7.474 7.474 0 0 0 5.303 2.197 7.498 7.498 0 0 0 5.303-12.803zM15 81.193C15 44.694 44.693 15 81.191 15c36.497 0 66.189 29.694 66.189 66.193 0 36.496-29.692 66.187-66.189 66.187C44.693 147.38 15 117.689 15 81.193z"></path>
+                  <circle cx="11" cy="11" r="8" strokeWidth="2" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" strokeWidth="2" />
                 </svg>
               </div>
-              <ul class="mt-6 space-y-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    id="Gold_Retriever"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="Gold_Retriever"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    Gold Retriever
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="Corgi"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="Corgi"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    Corgi
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="Pit_Bull"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="Pit_Bull"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    Pit Bull
-                  </label>
-                </li>
+            </div>
+
+            {/* 3. GENDER FILTER (Replaces Color) */}
+            <div className="p-6">
+              <h6 className="text-slate-900 text-sm font-bold mb-3">Gender</h6>
+              <ul className="space-y-3">
+                {["All", "Male", "Female"].map((g) => (
+                  <li key={g} className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      id={g}
+                      name="gender"
+                      className="w-4 h-4 cursor-pointer accent-[#009e8c]"
+                      checked={filters.gender === g}
+                      onChange={() => handleFilterChange("gender", g)}
+                    />
+                    <label
+                      htmlFor={g}
+                      className="text-slate-700 font-medium text-sm cursor-pointer"
+                    >
+                      {g}
+                    </label>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {/* Year Slider */}
-
-            <div class="p-6">
-              <h6 class="text-slate-900 text-sm font-semibold">Color</h6>
-              <div class="flex px-3 py-1.5 rounded-md border border-gray-300 bg-gray-100 overflow-hidden mt-2">
-                <input
-                  type="email"
-                  placeholder="Search color"
-                  class="w-full bg-transparent outline-none text-gray-900 text-sm"
-                />
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 192.904 192.904"
-                  class="w-3 fill-gray-600"
-                >
-                  <path d="m190.707 180.101-47.078-47.077c11.702-14.072 18.752-32.142 18.752-51.831C162.381 36.423 125.959 0 81.191 0 36.422 0 0 36.423 0 81.193c0 44.767 36.422 81.187 81.191 81.187 19.688 0 37.759-7.049 51.831-18.751l47.079 47.078a7.474 7.474 0 0 0 5.303 2.197 7.498 7.498 0 0 0 5.303-12.803zM15 81.193C15 44.694 44.693 15 81.191 15c36.497 0 66.189 29.694 66.189 66.193 0 36.496-29.692 66.187-66.189 66.187C44.693 147.38 15 117.689 15 81.193z"></path>
-                </svg>
-              </div>
-              <ul class="mt-6 space-y-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    id="black"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="black"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-black w-4 h-4"></span>
-                    Black
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="blue"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="blue"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-blue-600 w-4 h-4"></span>
-                    Blue
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="purple"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="purple"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-purple-600 w-4 h-4"></span>
-                    Purple
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="orange"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="orange"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-orange-600 w-4 h-4"></span>
-                    Orange
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="pink"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="pink"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-pink-600 w-4 h-4"></span>
-                    Pink
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="yellow"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="yellow"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-yellow-600 w-4 h-4"></span>
-                    Yellow
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="red"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="red"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-red-600 w-4 h-4"></span>
-                    Red
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="green"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="green"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-green-600 w-4 h-4"></span>
-                    Green
-                  </label>
-                </li>
-              </ul>
-            </div>
-
-            <div class="p-6">
-              <h6 class="text-slate-900 text-sm font-semibold">Discount</h6>
-              <ul class="space-y-4 mt-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="10"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="10"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    10% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="20"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="20"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    20% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="30"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="30"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    30% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="40"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="40"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    40% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="50"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="50"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    50% and above
-                  </label>
-                </li>
-              </ul>
+            {/* 4. AGE FILTER (Replaces Discount) */}
+            <div className="p-6">
+              <h6 className="text-slate-900 text-sm font-bold mb-2">
+                Age (Years)
+              </h6>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 2"
+                className="w-full px-3 py-2 rounded-md border border-gray-300 bg-gray-50 text-sm focus:ring-2 focus:ring-[#009e8c] outline-none"
+                value={filters.age}
+                onChange={(e) => handleFilterChange("age", e.target.value)}
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                Enter exact age to filter
+              </p>
             </div>
           </div>
         </div>
 
-        <div class="w-full p-6">
-          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
+        {/* --- MAIN CONTENT: PET GRID --- */}
+        <div className="flex-1 p-6 bg-gray-50">
+          {/* Top Search Bar */}
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Search by pet name..."
+              className="w-full p-4 rounded-xl border border-gray-200 shadow-sm text-lg focus:ring-2 focus:ring-[#009e8c] outline-none"
+              value={filters.search}
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+            />
           </div>
+
+          {/* Grid */}
+          {loading ? (
+            <div className="h-96 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#009e8c]"></div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {pets.map((pet) => (
+                  // Format pet object for Card component (handle single vs multi photo)
+                  <Card
+                    key={pet.petId || pet.id}
+                    content={{
+                      ...pet,
+                      // Ensure Card gets a valid image source string
+                      image:
+                        pet.photos && pet.photos.length > 0
+                          ? pet.photos[0]
+                          : pet.imageUrl,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {pets.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                  <p className="text-lg font-medium">
+                    No pets found matching your filters.
+                  </p>
+                  <button
+                    onClick={clearFilters}
+                    className="text-[#009e8c] hover:underline mt-2"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
-
-export default PetList;

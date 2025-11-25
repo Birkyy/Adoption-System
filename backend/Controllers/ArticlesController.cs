@@ -28,9 +28,7 @@ namespace backend.Controllers
         public async Task<ActionResult<List<Article>>> GetMyArticles([FromQuery] string authorId)
         {
             if (string.IsNullOrEmpty(authorId))
-            {
                 return BadRequest("AuthorId is required.");
-            }
 
             var articles = await _articleService.GetByAuthorIdAsync(authorId);
             return Ok(articles);
@@ -40,12 +38,8 @@ namespace backend.Controllers
         public async Task<ActionResult<Article>> GetById(string id)
         {
             var article = await _articleService.GetByIdAsync(id);
-
             if (article is null)
-            {
                 return NotFound($"Article with Id {id} not found.");
-            }
-
             return Ok(article);
         }
 
@@ -53,23 +47,17 @@ namespace backend.Controllers
         public async Task<IActionResult> Create(Article newArticle)
         {
             if (string.IsNullOrEmpty(newArticle.AuthorId))
-            {
                 return BadRequest("AuthorId is required.");
-            }
 
             var author = await _userService.GetByIdAsync(newArticle.AuthorId);
             if (author == null || author.UserRole != "NGO")
-            {
                 return StatusCode(403, "Access Denied: Only NGOs can post articles.");
-            }
 
-            if (string.IsNullOrEmpty(newArticle.Status))
-            {
-                newArticle.Status = "Pending";
-            }
+            // Force status to Pending to prevent auto-publishing
+            newArticle.Status = "Pending";
+            newArticle.PublishDate = DateTime.UtcNow;
 
             await _articleService.CreateAsync(newArticle);
-
             return CreatedAtAction(nameof(GetById), new { id = newArticle.ArticleId }, newArticle);
         }
 
@@ -81,22 +69,17 @@ namespace backend.Controllers
         )
         {
             var existingArticle = await _articleService.GetByIdAsync(id);
-
             if (existingArticle is null)
-            {
-                return NotFound($"Article with Id {id} not found.");
-            }
+                return NotFound($"Article not found.");
 
             if (string.IsNullOrEmpty(currentUserId) || existingArticle.AuthorId != currentUserId)
-            {
-                return StatusCode(403, "Access Denied: You are not the author of this article.");
-            }
+                return StatusCode(403, "Access Denied: You are not the author.");
 
             updatedArticle.ArticleId = existingArticle.ArticleId;
             updatedArticle.AuthorId = existingArticle.AuthorId;
+            updatedArticle.Status = existingArticle.Status;
 
             await _articleService.UpdateArticleAsync(id, updatedArticle);
-
             return Ok("Article updated successfully.");
         }
 
@@ -104,20 +87,41 @@ namespace backend.Controllers
         public async Task<IActionResult> Delete(string id, [FromQuery] string currentUserId)
         {
             var existingArticle = await _articleService.GetByIdAsync(id);
-
             if (existingArticle is null)
-            {
-                return NotFound($"Article with Id {id} not found.");
-            }
+                return NotFound($"Article not found.");
 
+            // Allow Author OR Admin (if you implement admin role check here) to delete
             if (string.IsNullOrEmpty(currentUserId) || existingArticle.AuthorId != currentUserId)
-            {
-                return StatusCode(403, "Access Denied: You are not the author of this article.");
-            }
+                return StatusCode(403, "Access Denied.");
 
             await _articleService.RemoveAsync(id);
+            return Ok($"Article deleted.");
+        }
 
-            return Ok($"Article with Id {id} deleted.");
+        [HttpGet("admin/pending")]
+        public async Task<ActionResult<List<Article>>> GetPendingArticles()
+        {
+            var articles = await _articleService.GetByStatusAsync("Pending");
+            return Ok(articles);
+        }
+
+        [HttpGet("admin/all")]
+        public async Task<ActionResult<List<Article>>> GetAllArticles()
+        {
+            var articles = await _articleService.GetAllAsync();
+            return Ok(articles);
+        }
+
+        [HttpPut("admin/status/{id}")]
+        public async Task<IActionResult> UpdateStatus(string id, [FromQuery] string status)
+        {
+            var article = await _articleService.GetByIdAsync(id);
+            if (article == null)
+                return NotFound();
+
+            article.Status = status;
+            await _articleService.UpdateArticleAsync(id, article);
+            return Ok($"Article {status}");
         }
     }
 }

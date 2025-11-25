@@ -29,10 +29,15 @@ namespace backend.Services
         }
 
         public async Task<List<Article>> GetPublishedAsync() =>
-            await _articlesCollection.Find(x => x.Status == "Approved").ToListAsync();
+            await _articlesCollection
+                .Find(x => x.Status == "Approved" || x.Status == "Published")
+                .ToListAsync();
 
-        public async Task<List<Article>> GetPendingAsync() =>
-            await _articlesCollection.Find(x => x.Status == "Pending").ToListAsync();
+        public async Task<List<Article>> GetAllAsync() =>
+            await _articlesCollection.Find(_ => true).ToListAsync();
+
+        public async Task<List<Article>> GetByStatusAsync(string status) =>
+            await _articlesCollection.Find(x => x.Status == status).ToListAsync();
 
         public async Task<Article?> GetByIdAsync(string articleId) =>
             await _articlesCollection.Find(x => x.ArticleId == articleId).FirstOrDefaultAsync();

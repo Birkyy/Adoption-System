@@ -35,6 +35,9 @@ namespace backend.Services
         {
             newNgo.UserRole = "NGO";
             newNgo.Password = HashPassword(newNgo.Password);
+            // Ensure Status is set if not already (though controller sets it usually)
+            if (string.IsNullOrEmpty(newNgo.Status))
+                newNgo.Status = "Pending";
             await _usersCollection.InsertOneAsync(newNgo);
         }
 
@@ -65,6 +68,26 @@ namespace backend.Services
                 return null;
 
             return user;
+        }
+
+        public async Task UpdateAsync(string id, User updatedUser)
+        {
+            // This replaces the document with the new data
+            await _usersCollection.ReplaceOneAsync(x => x.Id == id, updatedUser);
+        }
+
+        public async Task<bool> IsEmailTakenAsync(string email, string excludeUserId)
+        {
+            return await _usersCollection
+                .Find(u => u.Email == email && u.Id != excludeUserId)
+                .AnyAsync();
+        }
+
+        public async Task<List<User>> GetPendingNgosAsync()
+        {
+            return await _usersCollection
+                .Find(u => u.UserRole == "NGO" && u.Status == "Pending")
+                .ToListAsync();
         }
 
         public async Task RemoveAsync(string userId)

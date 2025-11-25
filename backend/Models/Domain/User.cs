@@ -17,10 +17,16 @@ namespace backend.Models.Domain
 
         public string Password { get; set; } = null!;
 
-        public string ContactInfo { get; set; } = null!;
+        public string? ContactInfo { get; set; }
 
-        public string Name { get; set; } = null!;
+        public string? Name { get; set; }
+
+        public string? Bio { get; set; }
+
+        public string? Avatar { get; set; }
 
         public string? UserRole { get; set; }
+
+        public string Status { get; set; } = "Active";
     }
 }

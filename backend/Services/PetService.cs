@@ -42,7 +42,7 @@ namespace backend.Services
             string? name = null,
             string? breed = null,
             string? species = null,
-            int? age = null,
+            string? age = null,
             string? status = null
         )
         {
@@ -65,9 +65,9 @@ namespace backend.Services
                 filter &= builder.Eq(p => p.Species, species);
             }
 
-            if (age.HasValue)
+            if (!string.IsNullOrEmpty(age))
             {
-                filter &= builder.Eq(p => p.Age, age.Value);
+                filter &= builder.Eq(p => p.Age, age);
             }
 
             if (!string.IsNullOrEmpty(status))

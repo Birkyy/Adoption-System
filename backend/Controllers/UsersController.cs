@@ -1,4 +1,5 @@
 using backend.Models.Domain;
+using backend.Models.DTO;
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,17 +20,11 @@ namespace backend.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
-            {
                 return BadRequest("Email and Password are required.");
-            }
 
             var user = await _userService.LoginAsync(request.Email, request.Password);
-
             if (user == null)
-            {
                 return Unauthorized("Invalid email or password.");
-            }
-
             user.Password = "";
             return Ok(user);
         }
@@ -38,59 +33,107 @@ namespace backend.Controllers
         public async Task<IActionResult> RegisterPublic(Public newPublicUser)
         {
             await _userService.CreatePublicAsync(newPublicUser);
-
             return CreatedAtAction(nameof(GetById), new { id = newPublicUser.Id }, newPublicUser);
         }
 
-        [HttpPost("register/ngo")]
-        public async Task<IActionResult> RegisterNgo(NGO newNgoUser, [FromQuery] string adminId)
+        [HttpPost("request/ngo")]
+        public async Task<IActionResult> RequestNgo([FromBody] NgoRegistrationDto request)
         {
-            if (string.IsNullOrEmpty(adminId))
+            var newNgo = new NGO
             {
-                return BadRequest("AdminId is required to verify permissions.");
-            }
-
-            var admin = await _userService.GetByIdAsync(adminId);
-            if (admin == null || admin.UserRole != "Admin")
-            {
-                return StatusCode(
-                    403,
-                    "Access Denied: Only Admins can create NGO accounts directly."
-                );
-            }
-
-            await _userService.CreateNgoAsync(newNgoUser);
-            return CreatedAtAction(nameof(GetById), new { id = newNgoUser.Id }, newNgoUser);
-        }
-
-        [HttpPost("seed-admin")]
-        public async Task<IActionResult> SeedAdmin()
-        {
-            var admin = new Admin
-            {
-                Username = "SuperAdmin",
-                Email = "SWE2209841@xmu.edu.my",
-                Password = "@dminPass123",
-                Name = "System Administrator",
-                ContactInfo = "+60123456789",
+                Name = request.Name,
+                Username = request.Username,
+                Email = request.Email,
+                Password = request.Password,
+                ContactInfo = request.ContactInfo,
+                Bio = request.Bio,
+                UserRole = "NGO",
+                Status = "Pending",
+                Address = request.Address,
             };
 
-            await _userService.CreateAdminAsync(admin);
-            return Ok("Admin created successfully.");
+            await _userService.CreateNgoAsync(newNgo);
+
+            return CreatedAtAction(nameof(GetById), new { id = newNgo.Id }, newNgo);
         }
 
         [HttpGet("{id:length(24)}")]
         public async Task<ActionResult<User>> GetById(string id)
         {
             var user = await _userService.GetByIdAsync(id);
-
             if (user is null)
+                return NotFound();
+            user.Password = "";
+            return Ok(user);
+        }
+
+        [HttpGet("admin/pending-ngos")]
+        public async Task<ActionResult<List<User>>> GetPendingNgos()
+        {
+            var pendingNgos = await _userService.GetPendingNgosAsync();
+            return Ok(pendingNgos);
+        }
+
+        // 3. Admin: Approve/Reject User
+        [HttpPut("admin/status/{id}")]
+        public async Task<IActionResult> UpdateUserStatus(string id, [FromQuery] string status)
+        {
+            var user = await _userService.GetByIdAsync(id);
+            if (user == null)
+                return NotFound();
+
+            user.Status = status;
+            await _userService.UpdateAsync(id, user);
+            return Ok($"User status updated to {status}");
+        }
+
+        [HttpPut("{id:length(24)}")]
+        public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto request)
+        {
+            var existingUser = await _userService.GetByIdAsync(id);
+
+            if (existingUser is null)
             {
                 return NotFound();
             }
 
-            user.Password = "";
-            return Ok(user);
+            if (!string.IsNullOrEmpty(request.Email) && existingUser.Email != request.Email)
+            {
+                bool isTaken = await _userService.IsEmailTakenAsync(request.Email, id);
+                if (isTaken)
+                {
+                    return Conflict("Email is already in use by another account.");
+                }
+            }
+
+            existingUser.Name = request.Name;
+            existingUser.Email = request.Email ?? existingUser.Email;
+            existingUser.ContactInfo = request.ContactInfo;
+            existingUser.Bio = request.Bio;
+            existingUser.Avatar = request.Avatar;
+
+            await _userService.UpdateAsync(id, existingUser);
+
+            return NoContent();
+        }
+
+        [HttpPost("seed-admin")]
+        public async Task<IActionResult> SeedAdmin()
+        {
+            var adminEmail = "admin@petstore.com";
+
+            var admin = new Admin
+            {
+                Username = "SuperrAdmin",
+                Email = adminEmail,
+                Password = "Admin",
+                Name = "System Administrator",
+                ContactInfo = "N/A",
+                Status = "Active",
+            };
+
+            await _userService.CreateAdminAsync(admin);
+            return Ok(new { message = "Admin created successfully", email = adminEmail });
         }
     }
 

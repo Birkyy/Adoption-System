@@ -25,7 +25,11 @@ export const registerPublicUser = async (userData) => {
   }
 };
 
-export const registerNgoUser = async (userData, adminId) => {
-  const response = await axios.post(`${API_BASE_URL}/register/ngo?adminId=${adminId}`, userData);
-  return response.data;
+export const requestNgoAccount = async (ngoData) => {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/request/ngo`, ngoData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };

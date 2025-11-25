@@ -29,9 +29,9 @@ function SignIn() {
     // If the Context has a user, redirect them
     if (user) {
       if (user.userRole === "Admin") {
-        navigate("/admin-dashboard");
+        navigate("/admin");
       } else if (user.userRole === "NGO") {
-        navigate("/ngo-dashboard");
+        navigate("/ngo");
       } else {
         navigate("/");
       }
@@ -45,18 +45,10 @@ function SignIn() {
 
     try {
       const userData = await loginUser(email, password);
-
-      // 4. USE CONTEXT LOGIN
-      // This updates the global state immediately (fixing the header)
-      // and handles the localStorage/sessionStorage logic inside the context.
       login(userData, rememberMe);
 
-      // Success Toast
       toast.dismiss(loadingToast);
       toast.success(`Welcome back, ${userData.name}!`);
-
-      // The useEffect above will detect the state change and redirect automatically.
-      // However, we can keep a small timeout for visual smoothness if desired.
     } catch (err) {
       toast.dismiss(loadingToast);
       toast.error("Invalid email or password.");

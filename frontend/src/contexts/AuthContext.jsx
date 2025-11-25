@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check both storages on initial load
     const storedUser =
       localStorage.getItem("user") || sessionStorage.getItem("user");
     if (storedUser) {
@@ -20,8 +21,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (userData, rememberMe) => {
+    // 1. Update State
     setUser(userData);
 
+    // 2. Update Storage
     if (rememberMe) {
       localStorage.setItem("user", JSON.stringify(userData));
     } else {
@@ -30,8 +33,10 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    // 1. Clear State
     setUser(null);
 
+    // 2. Clear Storage
     localStorage.removeItem("user");
     sessionStorage.removeItem("user");
   };

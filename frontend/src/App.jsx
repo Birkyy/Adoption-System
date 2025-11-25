@@ -8,10 +8,12 @@ import Surrender from "./pages/Surrender";
 import Article from "./pages/Article";
 import Event from "./pages/Event";
 import Volunteer from "./pages/Volunteer";
-import NGOList from "./pages/NGOList";
 import Map from "./pages/Map";
 import PetDetail from "./pages/PetDetail";
 import Profile from "./pages/Profile";
+import AdminDashboard from "./pages/AdminDashboard";
+import Partner from "./pages/Partner";
+import NGODashboard from "./pages/NGODashboard";
 
 function App() {
   return (
@@ -27,10 +29,12 @@ function App() {
             <Route path="article" element={<Article />} />
             <Route path="event" element={<Event />} />
             <Route path="volunteer" element={<Volunteer />} />
-            <Route path="ngo" element={<NGOList />} />
             <Route path="map" element={<Map />} />
             <Route path="petdetail" element={<PetDetail />}></Route>
             <Route path="profile" element={<Profile />}></Route>
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="partner" element={<Partner />} />
+            <Route path="ngo" element={<NGODashboard />} />
           </Route>
         </Routes>
       </BrowserRouter>

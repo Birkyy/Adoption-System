@@ -1,17 +1,22 @@
 import { useState, useEffect } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useSlide } from "../contexts/SlideContext";
-import { useAuth } from "../contexts/AuthContext"; // Uses the Context we set up
+import { useAuth } from "../contexts/AuthContext";
 
 function Header({ overlay = false }) {
   const { currentSlideIndex } = useSlide();
-
-  // We only need the user object to check if logged in.
-  // We don't need 'logout' function here anymore since the button is removed.
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Logic: We want a solid background and dark text for these specific pages
+  // instead of the transparent white text used on the Home slider.
+  const isAlternatePage = ["/partner", "/adopt"].includes(location.pathname);
 
   // --- Color Logic ---
   const getTextColor = () => {
+    if (isAlternatePage) return "text-slate-800";
+
+    // Home Page Slider Logic
     switch (currentSlideIndex) {
       case 0:
       case 1:
@@ -21,7 +26,10 @@ function Header({ overlay = false }) {
         return "text-black";
     }
   };
+
   const getHoverColor = () => {
+    if (isAlternatePage) return "hover:text-[#009e8c]"; // Teal hover
+
     switch (currentSlideIndex) {
       case 0:
         return "hover:text-amber-300";
@@ -34,14 +42,21 @@ function Header({ overlay = false }) {
     }
   };
 
+  const getBackgroundColor = () => {
+    // Matches the warm/light background of your content pages
+    if (isAlternatePage) return "bg-amber-50 shadow-sm";
+    return "bg-transparent";
+  };
+
   const textColor = getTextColor();
   const hoverColor = getHoverColor();
+  const backgroundColor = getBackgroundColor();
 
   return (
     <nav
       className={`navbar ${
         overlay ? "absolute top-0 left-0 right-0 z-50 w-full" : "w-full"
-      }`}
+      } ${backgroundColor} transition-colors duration-300 ease-in-out`}
     >
       <ul
         className={`flex justify-between p-4 bg-transparent text-lg font-semibold transition-colors duration-500 ease-in-out ${textColor}`}
@@ -89,6 +104,14 @@ function Header({ overlay = false }) {
                   Volunteers
                 </NavLink>
               </li>
+              <li>
+                <NavLink
+                  to="/partner"
+                  className="block px-1 py-2 hover:text-gray-500"
+                >
+                  Partner with Us
+                </NavLink>
+              </li>
             </ul>
           </li>
           <li>
@@ -102,7 +125,7 @@ function Header({ overlay = false }) {
         <div className="flex flex-row justify-end gap-5 items-center">
           {/* --- CONDITIONAL LOGIC --- */}
           {user ? (
-            // IF LOGGED IN: Show Notification & Profile (Logout removed)
+            // IF LOGGED IN: Show Notification & Profile
             <>
               {/* 1. Notification Bell */}
               <button>
