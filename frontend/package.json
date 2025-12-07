@@ -13,10 +13,12 @@
     "@tailwindcss/vite": "^4.1.13",
     "axios": "^1.13.2",
     "elevator.js": "^1.0.1",
+    "mammoth": "^1.11.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.3",
+    "recharts": "^3.5.1",
     "tailwindcss": "^4.1.13",
     "vite-plugin-svgr": "^4.5.0"
   },

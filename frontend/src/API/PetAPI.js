@@ -20,3 +20,12 @@ export const getPets = async (filters = {}) => {
 export const getPetsBySpecies = async (species, status = "Available") => {
   return getPets({ species, status });
 };
+
+export const getPetById = async (id) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/Pets/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

@@ -1,351 +1,378 @@
-function Event() {
+import React, { useState, useEffect } from "react";
+import {
+  getPublicEvents,
+  createEventProposal,
+  getAllNgos,
+} from "../API/EventAPI";
+import { useAuth } from "../contexts/AuthContext";
+import EventCard from "../components/EventCard";
+import toast, { Toaster } from "react-hot-toast";
+import LoadingScreen from "../components/LoadingScreen";
+
+export default function Event() {
+  const { user } = useAuth();
+  const [events, setEvents] = useState([]);
+  const [ngos, setNgos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showProposalForm, setShowProposalForm] = useState(false);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+
+  // Proposal Form State
+  const [proposal, setProposal] = useState({
+    title: "",
+    description: "",
+    eventDate: "",
+    location: "",
+    ngoId: "",
+    imageUrl: "",
+    documents: [],
+  });
+
+  // 1. Fetch Events & NGOs
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const eventData = await getPublicEvents();
+      const ngoData = await getAllNgos();
+      setNgos(ngoData);
+
+      // Apply Filters & Sorting
+      let filtered = eventData;
+
+      if (search) {
+        filtered = filtered.filter(
+          (e) =>
+            e.title.toLowerCase().includes(search.toLowerCase()) ||
+            e.description.toLowerCase().includes(search.toLowerCase())
+        );
+      }
+      if (locationFilter) {
+        filtered = filtered.filter((e) =>
+          e.location?.toLowerCase().includes(locationFilter.toLowerCase())
+        );
+      }
+      if (dateFilter) {
+        filtered = filtered.filter((e) => e.eventDate.startsWith(dateFilter));
+      }
+
+      // --- NEW: Sort by Date (Soonest First) ---
+      filtered.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+
+      setEvents(filtered);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [search, locationFilter, dateFilter]);
+
+  // Handle Document Uploads
+  const handleDocumentUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    const validFiles = files.filter((file) => file.size <= 5 * 1024 * 1024);
+    if (validFiles.length < files.length)
+      toast.error("Some files skipped. Max size is 5MB.");
+
+    const promises = validFiles.map((file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(promises)
+      .then((base64Docs) => {
+        setProposal((prev) => ({
+          ...prev,
+          documents: [...prev.documents, ...base64Docs],
+        }));
+        toast.success(`${base64Docs.length} document(s) attached.`);
+      })
+      .catch((err) => toast.error("Error reading documents."));
+  };
+
+  // 2. Handle Proposal Submission
+  const handleProposalSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!user) {
+      toast.error("Please sign in to submit a proposal.");
+      return;
+    }
+
+    if (user.userRole !== "NGO" && !proposal.ngoId) {
+      toast.error("Please select a Partner NGO.");
+      return;
+    }
+
+    const selectedDate = new Date(proposal.eventDate);
+    const now = new Date();
+    if (selectedDate <= now) {
+      toast.error("Event date must be in the future.");
+      return;
+    }
+
+    try {
+      const payload = {
+        ...proposal,
+        createdById: user.id,
+        ngoId: user.userRole === "NGO" ? user.id : proposal.ngoId,
+        ProposalDocuments: proposal.documents,
+      };
+
+      await createEventProposal(payload);
+      toast.success("Proposal submitted successfully!");
+      setShowProposalForm(false);
+      setProposal({
+        title: "",
+        description: "",
+        eventDate: "",
+        location: "",
+        ngoId: "",
+        imageUrl: "",
+        documents: [],
+      });
+
+      fetchData(); // Refresh list to see new event if approved (or just re-sort)
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to submit proposal.");
+    }
+  };
+
   return (
     <>
-      <div class="flex">
-        <div class="w-full max-w-[280px] shrink-0 py-6">
-          <div class="flex items-center border-b border-gray-300 pb-4 px-6">
-            <h3 class="text-slate-900 text-lg font-semibold">Filter</h3>
+      <Toaster position="top-right" />
+
+      {loading && <LoadingScreen />}
+
+      <div className="flex flex-col lg:flex-row min-h-screen bg-white max-w-7xl mx-auto fredoka">
+        {/* FILTERS SIDEBAR */}
+        <div className="w-full lg:w-[280px] shrink-0 py-6 border-r border-gray-100">
+          <div className="flex items-center border-b border-gray-200 pb-4 px-6">
+            <h3 className="text-slate-900 text-lg font-bold">Filter Events</h3>
             <button
               type="button"
-              class="text-sm text-red-500 font-semibold ml-auto cursor-pointer"
+              onClick={() => {
+                setSearch("");
+                setLocationFilter("");
+                setDateFilter("");
+              }}
+              className="text-sm text-red-500 font-semibold ml-auto cursor-pointer hover:underline"
             >
               Clear all
             </button>
           </div>
-
-          <div class="border-r border-gray-300 divide-y divide-gray-300">
-            <div class="p-6">
-              <ul class="space-y-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="dog"
-                    name="animal"
-                    class="w-4 h-4 cursor-pointer"
-                    checked
-                  />
-                  <label
-                    for="dog"
-                    class="text-slate-900 font-semibold text-sm cursor-pointer"
-                  >
-                    Dog
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="cat"
-                    name="animal"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="cat"
-                    class="text-slate-900 font-semibold text-sm cursor-pointer"
-                  >
-                    Cat
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="other"
-                    name="animal"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="other"
-                    class="text-slate-900 font-semibold text-sm cursor-pointer"
-                  >
-                    Others
-                  </label>
-                </li>
-              </ul>
+          <div className="p-6 space-y-6">
+            <div>
+              <h6 className="text-slate-900 text-sm font-bold mb-2">Search</h6>
+              <input
+                type="text"
+                placeholder="Keywords..."
+                className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
-
-            <div class="p-6">
-              <h6 class="text-slate-900 text-sm font-semibold">Breeds</h6>
-              <div class="flex px-3 py-1.5 rounded-md border border-gray-300 bg-gray-100 overflow-hidden mt-2">
-                <input
-                  type="email"
-                  placeholder="Search category"
-                  class="w-full bg-transparent outline-none text-gray-900 text-sm"
-                />
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 192.904 192.904"
-                  class="w-3 fill-gray-600"
-                >
-                  <path d="m190.707 180.101-47.078-47.077c11.702-14.072 18.752-32.142 18.752-51.831C162.381 36.423 125.959 0 81.191 0 36.422 0 0 36.423 0 81.193c0 44.767 36.422 81.187 81.191 81.187 19.688 0 37.759-7.049 51.831-18.751l47.079 47.078a7.474 7.474 0 0 0 5.303 2.197 7.498 7.498 0 0 0 5.303-12.803zM15 81.193C15 44.694 44.693 15 81.191 15c36.497 0 66.189 29.694 66.189 66.193 0 36.496-29.692 66.187-66.189 66.187C44.693 147.38 15 117.689 15 81.193z"></path>
-                </svg>
-              </div>
-              <ul class="mt-6 space-y-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    id="Gold_Retriever"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="Gold_Retriever"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    Gold Retriever
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="Corgi"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="Corgi"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    Corgi
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="Pit_Bull"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="Pit_Bull"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    Pit Bull
-                  </label>
-                </li>
-              </ul>
+            <div>
+              <h6 className="text-slate-900 text-sm font-bold mb-2">
+                Location
+              </h6>
+              <input
+                type="text"
+                placeholder="City or Venue"
+                className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+              />
             </div>
-
-            {/* Year Slider */}
-
-            <div class="p-6">
-              <h6 class="text-slate-900 text-sm font-semibold">Color</h6>
-              <div class="flex px-3 py-1.5 rounded-md border border-gray-300 bg-gray-100 overflow-hidden mt-2">
-                <input
-                  type="email"
-                  placeholder="Search color"
-                  class="w-full bg-transparent outline-none text-gray-900 text-sm"
-                />
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 192.904 192.904"
-                  class="w-3 fill-gray-600"
-                >
-                  <path d="m190.707 180.101-47.078-47.077c11.702-14.072 18.752-32.142 18.752-51.831C162.381 36.423 125.959 0 81.191 0 36.422 0 0 36.423 0 81.193c0 44.767 36.422 81.187 81.191 81.187 19.688 0 37.759-7.049 51.831-18.751l47.079 47.078a7.474 7.474 0 0 0 5.303 2.197 7.498 7.498 0 0 0 5.303-12.803zM15 81.193C15 44.694 44.693 15 81.191 15c36.497 0 66.189 29.694 66.189 66.193 0 36.496-29.692 66.187-66.189 66.187C44.693 147.38 15 117.689 15 81.193z"></path>
-                </svg>
-              </div>
-              <ul class="mt-6 space-y-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    id="black"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="black"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-black w-4 h-4"></span>
-                    Black
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="blue"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="blue"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-blue-600 w-4 h-4"></span>
-                    Blue
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="purple"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="purple"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-purple-600 w-4 h-4"></span>
-                    Purple
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="orange"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="orange"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-orange-600 w-4 h-4"></span>
-                    Orange
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="pink"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="pink"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-pink-600 w-4 h-4"></span>
-                    Pink
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="yellow"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="yellow"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-yellow-600 w-4 h-4"></span>
-                    Yellow
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="red"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="red"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-red-600 w-4 h-4"></span>
-                    Red
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    id="green"
-                    type="checkbox"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="green"
-                    class="flex items-center gap-2 text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    <span class="block rounded-full bg-green-600 w-4 h-4"></span>
-                    Green
-                  </label>
-                </li>
-              </ul>
-            </div>
-
-            <div class="p-6">
-              <h6 class="text-slate-900 text-sm font-semibold">Discount</h6>
-              <ul class="space-y-4 mt-4">
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="10"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="10"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    10% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="20"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="20"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    20% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="30"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="30"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    30% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="40"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="40"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    40% and above
-                  </label>
-                </li>
-                <li class="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    id="50"
-                    name="discount"
-                    class="w-4 h-4 cursor-pointer"
-                  />
-                  <label
-                    for="50"
-                    class="text-slate-600 font-medium text-sm cursor-pointer"
-                  >
-                    50% and above
-                  </label>
-                </li>
-              </ul>
+            <div>
+              <h6 className="text-slate-900 text-sm font-bold mb-2">Date</h6>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+              />
             </div>
           </div>
         </div>
 
-        <div class="w-full p-6">
-          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
-            <div class="bg-gray-100 w-full h-48 rounded-md"></div>
+        {/* MAIN CONTENT */}
+        <div className="flex-1 p-6 bg-gray-50">
+          <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800 font-gloria">
+                Upcoming Events
+              </h1>
+              <p className="text-gray-500 mt-1">
+                Join our community events and help make a difference.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowProposalForm(true)}
+              className="mt-4 md:mt-0 px-6 py-3 bg-[#009e8c] text-white font-bold rounded-xl shadow-lg hover:bg-teal-700 transition-transform transform hover:-translate-y-1"
+            >
+              + Propose Event
+            </button>
+          </div>
+
+          {/* PROPOSAL MODAL */}
+          {showProposalForm && (
+            <div className="mb-8 bg-white p-6 rounded-2xl shadow-xl border border-indigo-50 animate-fadeIn">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-slate-800">
+                  Submit Event Proposal
+                </h2>
+                <button
+                  onClick={() => setShowProposalForm(false)}
+                  className="text-gray-400 hover:text-red-500"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleProposalSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    placeholder="Event Title"
+                    required
+                    className="p-3 border rounded-lg bg-gray-50"
+                    value={proposal.title}
+                    onChange={(e) =>
+                      setProposal({ ...proposal, title: e.target.value })
+                    }
+                  />
+                  <input
+                    type="datetime-local"
+                    required
+                    className="p-3 border rounded-lg bg-gray-50"
+                    value={proposal.eventDate}
+                    onChange={(e) =>
+                      setProposal({ ...proposal, eventDate: e.target.value })
+                    }
+                  />
+                </div>
+
+                <input
+                  placeholder="Location"
+                  required
+                  className="w-full p-3 border rounded-lg bg-gray-50"
+                  value={proposal.location}
+                  onChange={(e) =>
+                    setProposal({ ...proposal, location: e.target.value })
+                  }
+                />
+
+                {/* NGO SELECTION */}
+                {user?.userRole !== "NGO" && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">
+                      Partner NGO
+                    </label>
+                    <select
+                      required
+                      className="w-full p-3 border rounded-lg bg-gray-50 text-slate-700"
+                      value={proposal.ngoId}
+                      onChange={(e) =>
+                        setProposal({ ...proposal, ngoId: e.target.value })
+                      }
+                    >
+                      <option value="">
+                        -- Select an NGO to Partner With --
+                      </option>
+                      {ngos.length > 0 ? (
+                        ngos.map((ngo) => (
+                          <option key={ngo.id} value={ngo.id}>
+                            {ngo.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No Active NGOs found</option>
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {/* DOCUMENT UPLOAD */}
+                <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-300">
+                  <label className="block text-sm font-bold text-gray-600 mb-1">
+                    Attach Proposal Documents
+                  </label>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Upload PDFs or Word documents (Max 5MB each)
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleDocumentUpload}
+                    className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                  />
+                  {proposal.documents.length > 0 && (
+                    <div className="mt-2 text-xs text-green-600 font-medium">
+                      {proposal.documents.length} document(s) attached.
+                    </div>
+                  )}
+                </div>
+
+                <textarea
+                  placeholder="Describe your event idea..."
+                  required
+                  rows="3"
+                  className="w-full p-3 border rounded-lg bg-gray-50"
+                  value={proposal.description}
+                  onChange={(e) =>
+                    setProposal({ ...proposal, description: e.target.value })
+                  }
+                />
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowProposalForm(false)}
+                    className="px-6 py-2 text-slate-600 hover:bg-gray-100 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                  >
+                    Submit Proposal
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* EVENTS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+            {events.length === 0 && !loading && (
+              <div className="col-span-full text-center py-20 text-gray-500">
+                <p className="text-xl">
+                  No events found matching your filters.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </>
   );
 }
-
-export default Event;

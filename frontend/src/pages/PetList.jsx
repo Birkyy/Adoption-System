@@ -40,7 +40,7 @@ export default function PetList() {
         if (filters.species !== "All") apiParams.species = filters.species;
         if (debouncedBreed) apiParams.breed = debouncedBreed;
         if (debouncedSearch) apiParams.name = debouncedSearch;
-        if (debouncedAge) apiParams.age = parseInt(debouncedAge);
+        if (debouncedAge) apiParams.age = debouncedAge;
 
         // 2. Call API
         const data = await getPets(apiParams);

@@ -22,6 +22,7 @@ builder.Services.AddSingleton<UserService>();
 builder.Services.AddSingleton<AdoptionService>();
 builder.Services.AddSingleton<ArticleService>();
 builder.Services.AddSingleton<EventService>();
+builder.Services.AddSingleton<VolunteerService>();
 
 builder.Services.AddControllers();
 

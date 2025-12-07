@@ -26,6 +26,13 @@ namespace backend.Services
             return BCrypt.Net.BCrypt.HashPassword(plainPassword);
         }
 
+        public async Task<List<NGO>> GetAllNgosAsync()
+        {
+            var users = await _usersCollection.Find(u => u.UserRole == "NGO").ToListAsync();
+
+            return users.OfType<NGO>().ToList();
+        }
+
         public async Task<User?> GetByIdAsync(string id)
         {
             return await _usersCollection.Find(u => u.Id == id).FirstOrDefaultAsync();

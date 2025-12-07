@@ -9,6 +9,7 @@ namespace backend.Models.Settings
         public string AdoptionApplicationCollectionName { get; set; } = null!;
         public string ArticleCollectionName { get; set; } = null!;
         public string EventCollectionName { get; set; } = null!;
-        public string NgoRequestCollectionName { get; set; } = "NgoRequests";
+        public string NgoRequestCollectionName { get; set; } = null!;
+        public string VolunteerCollectionName { get; set; } = null!;
     }
 }

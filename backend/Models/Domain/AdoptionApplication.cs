@@ -21,5 +21,6 @@ namespace backend.Models.Domain
         public string Status { get; set; } = "Pending";
 
         public DateTime SubmissionDate { get; set; } = DateTime.UtcNow;
+        public string? Message { get; set; }
     }
 }

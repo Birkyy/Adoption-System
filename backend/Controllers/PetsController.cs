@@ -22,7 +22,7 @@ namespace backend.Controllers
             [FromQuery] string? name,
             [FromQuery] string? breed,
             [FromQuery] string? species,
-            [FromQuery] int? age,
+            [FromQuery] string? age,
             [FromQuery] string? status
         )
         {

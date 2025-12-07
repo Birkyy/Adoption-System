@@ -53,5 +53,8 @@ namespace backend.Services
 
         public async Task<AdoptionApplication?> GetByIdAsync(string id) =>
             await _applicationsCollection.Find(x => x.ApplicationId == id).FirstOrDefaultAsync();
+
+        public async Task RemoveAsync(string id) =>
+            await _applicationsCollection.DeleteOneAsync(x => x.ApplicationId == id);
     }
 }

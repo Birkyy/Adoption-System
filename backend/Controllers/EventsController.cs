@@ -17,30 +17,12 @@ namespace backend.Controllers
             _userService = userService;
         }
 
+        // ... (Keep existing GetPublicEvents, GetById, Create, ApproveEvent, UpdateDetails, JoinEvent, Delete, GetPending, GetMy) ...
+
         [HttpGet]
         public async Task<ActionResult<List<Event>>> GetPublicEvents()
         {
             var events = await _eventService.GetApprovedAsync();
-            return Ok(events);
-        }
-
-        [HttpGet("pending")]
-        public async Task<ActionResult<List<Event>>> GetPendingProposals([FromQuery] string ngoId)
-        {
-            if (string.IsNullOrEmpty(ngoId))
-                return BadRequest("NgoId is required.");
-
-            var events = await _eventService.GetPendingByNgoIdAsync(ngoId);
-            return Ok(events);
-        }
-
-        [HttpGet("my-events")]
-        public async Task<ActionResult<List<Event>>> GetMyEvents([FromQuery] string userId)
-        {
-            if (string.IsNullOrEmpty(userId))
-                return BadRequest("UserId is required.");
-
-            var events = await _eventService.GetByCreatorIdAsync(userId);
             return Ok(events);
         }
 
@@ -58,6 +40,8 @@ namespace backend.Controllers
         {
             if (string.IsNullOrEmpty(newEvent.CreatedById))
                 return BadRequest("CreatedById is required.");
+            if (newEvent.EventDate <= DateTime.UtcNow)
+                return BadRequest("Event date must be in the future.");
 
             var creator = await _userService.GetByIdAsync(newEvent.CreatedById);
             if (creator == null)
@@ -67,13 +51,12 @@ namespace backend.Controllers
             {
                 newEvent.Status = "Approved";
                 newEvent.NgoId = creator.Id;
+                newEvent.ParticipantIds.Add(creator.Id);
             }
             else
             {
                 if (string.IsNullOrEmpty(newEvent.NgoId))
-                {
-                    return BadRequest("Public users must specify an NgoId to propose an event.");
-                }
+                    return BadRequest("Public users must specify an NgoId.");
                 newEvent.Status = "Pending";
             }
 
@@ -91,14 +74,21 @@ namespace backend.Controllers
             var ev = await _eventService.GetByIdAsync(id);
             if (ev is null)
                 return NotFound();
-
             if (ev.NgoId != ngoId)
                 return StatusCode(403, "You are not the assigned NGO.");
-
             if (status != "Approved" && status != "Rejected")
                 return BadRequest("Invalid status.");
 
-            await _eventService.UpdateStatusAsync(id, status);
+            if (status == "Approved")
+            {
+                if (ev.EventDate < DateTime.UtcNow)
+                    return BadRequest("Cannot approve past event.");
+                await _eventService.ApproveProposalAsync(id);
+            }
+            else
+            {
+                await _eventService.UpdateStatusAsync(id, status);
+            }
             return Ok($"Event {status}.");
         }
 
@@ -112,11 +102,10 @@ namespace backend.Controllers
             var existingEvent = await _eventService.GetByIdAsync(id);
             if (existingEvent is null)
                 return NotFound();
-
             if (existingEvent.CreatedById != currentUserId)
-            {
-                return StatusCode(403, "Only the creator can edit this event.");
-            }
+                return StatusCode(403, "Only creator can edit.");
+            if (updatedEvent.EventDate <= DateTime.UtcNow)
+                return BadRequest("Date must be in future.");
 
             await _eventService.UpdateDetailsAsync(id, updatedEvent);
             return Ok("Event updated.");
@@ -128,10 +117,8 @@ namespace backend.Controllers
             var ev = await _eventService.GetByIdAsync(id);
             if (ev is null)
                 return NotFound();
-
             if (ev.Status != "Approved")
-                return BadRequest("Cannot join a pending event.");
-
+                return BadRequest("Cannot join pending event.");
             await _eventService.JoinEventAsync(id, userId);
             return Ok("Joined successfully.");
         }
@@ -142,14 +129,50 @@ namespace backend.Controllers
             var ev = await _eventService.GetByIdAsync(id);
             if (ev is null)
                 return NotFound();
-
             if (ev.CreatedById != currentUserId && ev.NgoId != currentUserId)
-            {
                 return StatusCode(403, "Access Denied.");
-            }
-
             await _eventService.RemoveAsync(id);
             return Ok("Event deleted.");
+        }
+
+        [HttpGet("pending")]
+        public async Task<ActionResult<List<Event>>> GetPendingProposals([FromQuery] string ngoId)
+        {
+            if (string.IsNullOrEmpty(ngoId))
+                return BadRequest("NgoId is required.");
+            var events = await _eventService.GetPendingByNgoIdAsync(ngoId);
+            return Ok(events);
+        }
+
+        [HttpGet("my-events")]
+        public async Task<ActionResult<List<Event>>> GetMyEvents([FromQuery] string userId)
+        {
+            if (string.IsNullOrEmpty(userId))
+                return BadRequest("UserId is required.");
+            var events = await _eventService.GetByCreatorIdAsync(userId);
+            return Ok(events);
+        }
+
+        // --- NEW: ADMIN ENDPOINTS ---
+
+        // 1. Get All Events (for moderation list)
+        [HttpGet("admin/all")]
+        public async Task<ActionResult<List<Event>>> GetAllEvents()
+        {
+            var events = await _eventService.GetAllAsync();
+            return Ok(events);
+        }
+
+        // 2. Flag/Reject Event (Take Down)
+        [HttpPut("admin/status/{id}")]
+        public async Task<IActionResult> UpdateStatus(string id, [FromQuery] string status)
+        {
+            var ev = await _eventService.GetByIdAsync(id);
+            if (ev == null)
+                return NotFound();
+
+            await _eventService.UpdateStatusAsync(id, status);
+            return Ok($"Event status updated to {status}");
         }
     }
 }

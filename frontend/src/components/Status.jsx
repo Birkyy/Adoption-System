@@ -1,52 +1,9 @@
-import React, { useState, useMemo } from "react";
-
-const sampleAdoptions = [
-  {
-    id: "A-001",
-    petName: "Buddy",
-    applicantName: "Siti",
-    appliedOn: "2025-10-05",
-    status: "Pending",
-    notes: "Has a fenced yard. Home visit pending.",
-  },
-  {
-    id: "A-002",
-    petName: "Luna",
-    applicantName: "Rahim",
-    appliedOn: "2025-09-20",
-    status: "Approved",
-    notes: "Approved by volunteer team.",
-  },
-  {
-    id: "A-003",
-    petName: "Milo",
-    applicantName: "Aisha",
-    appliedOn: "2025-10-22",
-    status: "Rejected",
-    notes: "Not enough experience with special-needs dogs.",
-  },
-];
-
-const sampleEvents = [
-  {
-    id: "E-101",
-    title: "Weekend Adoption Drive - Central Park",
-    proposer: "NGO Happy Paws",
-    submittedOn: "2025-10-18",
-    status: "Under Review",
-    attendeesEstimate: 150,
-    notes: "Requesting tables, PA system",
-  },
-  {
-    id: "E-102",
-    title: "Fundraising Bake Sale",
-    proposer: "Volunteer Group A",
-    submittedOn: "2025-10-10",
-    status: "Approved",
-    attendeesEstimate: 60,
-    notes: "",
-  },
-];
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
+import { getMyApplications, withdrawApplication } from "../API/AdoptionAPI";
+import { getMyEvents, deleteEvent } from "../API/EventAPI";
+import { useAuth } from "../contexts/AuthContext";
+import toast from "react-hot-toast";
 
 function StatusBadge({ status }) {
   const map = {
@@ -55,11 +12,10 @@ function StatusBadge({ status }) {
     Approved: "bg-green-50 text-green-800",
     Rejected: "bg-red-50 text-red-800",
     Withdrawn: "bg-gray-100 text-gray-700",
-    "Needs Info": "bg-orange-50 text-orange-800",
   };
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
         map[status] || "bg-gray-100 text-gray-800"
       }`}
     >
@@ -68,23 +24,74 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function Status({ isAdmin = false } = {}) {
-  const [adoptions, setAdoptions] = useState(sampleAdoptions);
-  const [events, setEvents] = useState(sampleEvents);
+export default function Status({ isAdmin = false, onBack } = {}) {
+  const { user } = useAuth();
+  const navigate = useNavigate(); // 2. Initialize navigate
+  const [adoptions, setAdoptions] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
-  const [tab, setTab] = useState("adoptions"); // 'adoptions' | 'events'
+  const [tab, setTab] = useState("adoptions");
 
+  // Fetch Data on Mount
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [myApps, myEvts] = await Promise.all([
+          getMyApplications(user.id),
+          getMyEvents(user.id),
+        ]);
+        setAdoptions(myApps);
+        setEvents(myEvts);
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load status data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user]);
+
+  // Actions
+  const handleWithdrawApp = async (id) => {
+    if (!window.confirm("Are you sure you want to withdraw this application?"))
+      return;
+    try {
+      await withdrawApplication(id, user.id);
+      toast.success("Application withdrawn.");
+      setAdoptions((prev) => prev.filter((a) => a.applicationId !== id));
+    } catch (err) {
+      toast.error("Failed to withdraw.");
+    }
+  };
+
+  const handleCancelEvent = async (e, id) => {
+    e.stopPropagation(); // Prevent navigating to detail page when clicking cancel
+    if (!window.confirm("Cancel this proposal?")) return;
+    try {
+      await deleteEvent(id, user.id);
+      toast.success("Proposal cancelled.");
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+    } catch (err) {
+      toast.error("Failed to cancel.");
+    }
+  };
+
+  // Filter Logic
   const filteredAdoptions = useMemo(() => {
     return adoptions.filter((a) => {
       const q = search.trim().toLowerCase();
       if (filter !== "All" && a.status !== filter) return false;
       if (!q) return true;
       return (
-        a.petName.toLowerCase().includes(q) ||
-        a.applicantName.toLowerCase().includes(q) ||
-        a.id.toLowerCase().includes(q)
+        a.petName?.toLowerCase().includes(q) ||
+        a.applicationId.toLowerCase().includes(q)
       );
     });
   }, [adoptions, search, filter]);
@@ -95,301 +102,172 @@ export default function Status({ isAdmin = false } = {}) {
       if (filter !== "All" && e.status !== filter) return false;
       if (!q) return true;
       return (
-        e.title.toLowerCase().includes(q) ||
-        e.proposer.toLowerCase().includes(q) ||
-        e.id.toLowerCase().includes(q)
+        e.title.toLowerCase().includes(q) || e.id.toLowerCase().includes(q)
       );
     });
   }, [events, search, filter]);
 
-  const approveAdoption = (id) => {
-    setAdoptions((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "Approved" } : p))
-    );
-  };
-  const rejectAdoption = (id) => {
-    setAdoptions((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "Rejected" } : p))
-    );
-  };
-  const withdrawApplication = (id) => {
-    setAdoptions((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "Withdrawn" } : p))
-    );
-  };
-
-  const approveEvent = (id) => {
-    setEvents((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "Approved" } : p))
-    );
-  };
-  const rejectEvent = (id) => {
-    setEvents((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: "Rejected" } : p))
-    );
-  };
-
-  const viewAdoption = (id) => {
-    alert("Open adoption details: " + id);
-  };
-  const viewEvent = (id) => {
-    alert("Open event details: " + id);
-  };
-
   return (
-    <div className="py-6">
+    <div className="py-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-[#202142]">My Status</h2>
+        <h2 className="text-2xl font-bold text-[#202142]">
+          My Activity Status
+        </h2>
 
-        <div className="flex gap-2 items-center">
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={() => setTab("adoptions")}
-              className={`px-3 py-2 rounded-md text-sm ${
-                tab === "adoptions"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-indigo-700 border border-indigo-100"
-              }`}
-            >
-              Adoption Applications
-            </button>
-            <button
-              onClick={() => setTab("events")}
-              className={`px-3 py-2 rounded-md text-sm ${
-                tab === "events"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white text-indigo-700 border border-indigo-100"
-              }`}
-            >
-              Event Proposals
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Search & filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div className="flex gap-2 items-center w-full sm:w-auto">
-          <input
-            type="text"
-            placeholder="Search by pet, applicant, title or ID..."
-            className="w-full sm:w-80 p-2 rounded-lg border border-indigo-100 bg-white text-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="p-2 rounded-lg border border-indigo-100 bg-white text-sm"
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="text-sm text-indigo-600 hover:text-indigo-800 md:hidden"
           >
-            <option value="All">All statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Withdrawn">Withdrawn</option>
-            <option value="Under Review">Under Review</option>
-            <option value="Needs Info">Needs Info</option>
-          </select>
-        </div>
+            &larr; Back
+          </button>
+        )}
 
-        <div className="sm:hidden flex gap-2">
+        <div className="flex gap-2">
           <button
             onClick={() => setTab("adoptions")}
-            className={`px-3 py-2 rounded-md text-sm ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               tab === "adoptions"
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-indigo-700 border border-indigo-100"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
             Adoptions
           </button>
           <button
             onClick={() => setTab("events")}
-            className={`px-3 py-2 rounded-md text-sm ${
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
               tab === "events"
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-indigo-700 border border-indigo-100"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
-            Events
+            Proposals
           </button>
         </div>
       </div>
 
-      <div className="space-y-6">
-        {tab === "adoptions" && (
-          <section>
-            <h3 className="text-xl font-semibold mb-4">
-              Adoption applications
-            </h3>
-            <div className="grid gap-4">
-              {filteredAdoptions.length === 0 && (
-                <div className="p-4 bg-white rounded-lg border border-indigo-50 text-sm text-gray-600">
-                  No adoption applications match your search/filter.
-                </div>
-              )}
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6 bg-gray-50 p-3 rounded-lg">
+        <input
+          type="text"
+          placeholder="Search..."
+          className="flex-1 p-2 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="p-2 rounded border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="All">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+      </div>
 
-              {filteredAdoptions.map((a) => (
-                <div
-                  key={a.id}
-                  className="p-4 bg-white rounded-lg border border-indigo-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
-                        {a.petName.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {a.petName}{" "}
-                          <span className="text-sm text-gray-500">
-                            ({a.id})
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Applicant: {a.applicantName} — Applied: {a.appliedOn}
+      {loading ? (
+        <div className="text-center py-12 text-gray-500">
+          Loading your data...
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* ADOPTIONS LIST */}
+          {tab === "adoptions" && (
+            <>
+              {filteredAdoptions.length === 0 ? (
+                <p className="text-center text-gray-400 py-10">
+                  No adoption applications found.
+                </p>
+              ) : (
+                filteredAdoptions.map((a) => (
+                  <div
+                    key={a.applicationId}
+                    className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-indigo-100 transition-colors"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🐾</span>
+                        <div>
+                          <h4 className="font-bold text-slate-800">
+                            {a.petName}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            Applied on:{" "}
+                            {new Date(a.submissionDate).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
                     </div>
-
-                    <div className="mt-2 text-sm text-gray-700">{a.notes}</div>
-                  </div>
-
-                  <div className="flex flex-col items-start sm:items-end gap-3">
-                    <StatusBadge status={a.status} />
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => viewAdoption(a.id)}
-                        className="px-3 py-1 rounded-md text-sm bg-indigo-50 text-indigo-700"
-                      >
-                        View
-                      </button>
-
+                    <div className="flex items-center gap-3">
+                      <StatusBadge status={a.status} />
                       {a.status === "Pending" && (
                         <button
-                          onClick={() => withdrawApplication(a.id)}
-                          className="px-3 py-1 rounded-md text-sm bg-white border border-indigo-100 text-indigo-700"
+                          onClick={() => handleWithdrawApp(a.applicationId)}
+                          className="text-xs font-bold text-red-500 border border-red-100 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors"
                         >
                           Withdraw
                         </button>
                       )}
-
-                      {isAdmin && a.status === "Pending" && (
-                        <>
-                          <button
-                            onClick={() => approveAdoption(a.id)}
-                            className="px-3 py-1 rounded-md text-sm bg-green-50 text-green-700"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => rejectAdoption(a.id)}
-                            className="px-3 py-1 rounded-md text-sm bg-red-50 text-red-700"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {tab === "events" && (
-          <section>
-            <h3 className="text-xl font-semibold mb-4">Event proposals</h3>
-            <div className="grid gap-4">
-              {filteredEvents.length === 0 && (
-                <div className="p-4 bg-white rounded-lg border border-indigo-50 text-sm text-gray-600">
-                  No event proposals match your search/filter.
-                </div>
+                ))
               )}
+            </>
+          )}
 
-              {filteredEvents.map((e) => (
-                <div
-                  key={e.id}
-                  className="p-4 bg-white rounded-lg border border-indigo-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                >
-                  <div>
+          {/* EVENTS LIST (UPDATED) */}
+          {tab === "events" && (
+            <>
+              {filteredEvents.length === 0 ? (
+                <p className="text-center text-gray-400 py-10">
+                  No event proposals found.
+                </p>
+              ) : (
+                filteredEvents.map((e) => (
+                  <div
+                    key={e.id}
+                    // 3. Make clickable
+                    onClick={() => navigate(`/event/${e.id}`)}
+                    className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">📅</span>
+                        <div>
+                          <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                            {e.title}
+                          </h4>
+                          <p className="text-xs text-gray-500">
+                            Event Date:{" "}
+                            {new Date(e.eventDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold">
-                        E
-                      </div>
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {e.title}{" "}
-                          <span className="text-sm text-gray-500">
-                            ({e.id})
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Proposer: {e.proposer} — Submitted: {e.submittedOn}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-2 text-sm text-gray-700">
-                      {e.notes || (
-                        <span className="text-gray-400">No notes provided</span>
+                      <StatusBadge status={e.status} />
+                      {e.status === "Pending" && (
+                        <button
+                          onClick={(ev) => handleCancelEvent(ev, e.id)} // Pass event to stop propagation
+                          className="text-xs font-bold text-red-500 border border-red-100 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors z-10 relative"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      {e.status === "Approved" && (
+                        <span className="text-gray-400 text-sm">›</span>
                       )}
                     </div>
                   </div>
-
-                  <div className="flex flex-col items-start sm:items-end gap-3">
-                    <StatusBadge status={e.status} />
-                    <div className="text-sm text-gray-600">
-                      Est. attendees: {e.attendeesEstimate}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => viewEvent(e.id)}
-                        className="px-3 py-1 rounded-md text-sm bg-indigo-50 text-indigo-700"
-                      >
-                        View
-                      </button>
-
-                      {isAdmin && (
-                        <>
-                          <button
-                            onClick={() => approveEvent(e.id)}
-                            className="px-3 py-1 rounded-md text-sm bg-green-50 text-green-700"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => rejectEvent(e.id)}
-                            className="px-3 py-1 rounded-md text-sm bg-red-50 text-red-700"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-
-                      {!isAdmin &&
-                        (e.status === "Under Review" ||
-                          e.status === "Needs Info") && (
-                          <button className="px-3 py-1 rounded-md text-sm bg-white border border-indigo-100 text-indigo-700">
-                            Edit / Update
-                          </button>
-                        )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      <div className="mt-8 p-4 text-sm text-gray-600 bg-white rounded-lg border border-indigo-50">
-        <strong>Legend:</strong> Pending/Under Review — waiting for staff.
-        Approved — everything good. Rejected/Withdrawn — application closed.
-      </div>
+                ))
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

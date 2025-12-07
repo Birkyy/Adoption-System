@@ -127,5 +127,22 @@ namespace backend.Controllers
 
             return Ok($"Application {status}.");
         }
+
+        [HttpDelete("{id:length(24)}")]
+        public async Task<IActionResult> Withdraw(string id, [FromQuery] string applicantId)
+        {
+            var app = await _adoptionService.GetByIdAsync(id);
+            if (app is null)
+                return NotFound();
+
+            if (app.ApplicantId != applicantId)
+                return StatusCode(403, "Access Denied.");
+
+            if (app.Status != "Pending")
+                return BadRequest("Cannot withdraw a processed application.");
+
+            await _adoptionService.RemoveAsync(id);
+            return Ok("Application withdrawn.");
+        }
     }
 }

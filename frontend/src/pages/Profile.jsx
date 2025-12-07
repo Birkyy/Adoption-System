@@ -16,8 +16,9 @@ export default function Profile() {
   const [email, setEmail] = useState("");
   const [contactInfo, setContactInfo] = useState("");
   const [bio, setBio] = useState("");
-  // Default placeholder image
-  const [avatar, setAvatar] = useState();
+  const [avatar, setAvatar] = useState(
+    "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=500&q=60"
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState("profile");

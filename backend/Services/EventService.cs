@@ -27,12 +27,36 @@ namespace backend.Services
             {
                 newEvent.ParticipantIds = new List<string>();
             }
+            // Default to empty list if documents are null
+            if (newEvent.ProposalDocuments == null)
+            {
+                newEvent.ProposalDocuments = new List<string>();
+            }
 
             await _eventsCollection.InsertOneAsync(newEvent);
         }
 
-        public async Task<List<Event>> GetApprovedAsync() =>
-            await _eventsCollection.Find(x => x.Status == "Approved").ToListAsync();
+        public async Task<List<Event>> GetAllAsync() =>
+            await _eventsCollection.Find(_ => true).ToListAsync();
+
+        public async Task<List<Event>> GetApprovedAsync()
+        {
+            // 1. Auto-complete past events
+            var filter = Builders<Event>.Filter.And(
+                Builders<Event>.Filter.Eq(e => e.Status, "Approved"),
+                Builders<Event>.Filter.Lt(e => e.EventDate, DateTime.UtcNow)
+            );
+
+            var update = Builders<Event>.Update.Set(e => e.Status, "Completed");
+
+            await _eventsCollection.UpdateManyAsync(filter, update);
+
+            // 2. Return only upcoming Approved events, sorted by date
+            return await _eventsCollection
+                .Find(x => x.Status == "Approved")
+                .SortBy(e => e.EventDate) // Sort soonest first
+                .ToListAsync();
+        }
 
         public async Task<List<Event>> GetPendingByNgoIdAsync(string ngoId) =>
             await _eventsCollection
@@ -51,32 +75,44 @@ namespace backend.Services
             await _eventsCollection.UpdateOneAsync(x => x.Id == id, updateDef);
         }
 
+        public async Task JoinEventAsync(string eventId, string userId)
+        {
+            var update = Builders<Event>.Update.AddToSet(e => e.ParticipantIds, userId);
+            await _eventsCollection.UpdateOneAsync(e => e.Id == eventId, update);
+        }
+
         public async Task UpdateDetailsAsync(string id, Event updatedEvent)
         {
-            var updateDef = Builders<Event>
+            var update = Builders<Event>
                 .Update.Set(e => e.Title, updatedEvent.Title)
                 .Set(e => e.Description, updatedEvent.Description)
                 .Set(e => e.EventDate, updatedEvent.EventDate)
-                .Set(e => e.Location, updatedEvent.Location);
+                .Set(e => e.Location, updatedEvent.Location)
+                .Set(e => e.ImageUrl, updatedEvent.ImageUrl);
 
-            await _eventsCollection.UpdateOneAsync(x => x.Id == id, updateDef);
-        }
-
-        public async Task JoinEventAsync(string eventId, string userId)
-        {
-            var updateDef = Builders<Event>.Update.AddToSet(e => e.ParticipantIds, userId);
-
-            await _eventsCollection.UpdateOneAsync(x => x.Id == eventId, updateDef);
+            await _eventsCollection.UpdateOneAsync(e => e.Id == id, update);
         }
 
         public async Task LeaveEventAsync(string eventId, string userId)
         {
             var updateDef = Builders<Event>.Update.Pull(e => e.ParticipantIds, userId);
-
             await _eventsCollection.UpdateOneAsync(x => x.Id == eventId, updateDef);
         }
 
         public async Task RemoveAsync(string id) =>
             await _eventsCollection.DeleteOneAsync(x => x.Id == id);
+
+        public async Task ApproveProposalAsync(string id)
+        {
+            var ev = await GetByIdAsync(id);
+            if (ev == null)
+                return;
+
+            var update = Builders<Event>
+                .Update.Set(e => e.Status, "Approved")
+                .AddToSet(e => e.ParticipantIds, ev.CreatedById);
+
+            await _eventsCollection.UpdateOneAsync(e => e.Id == id, update);
+        }
     }
 }

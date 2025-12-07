@@ -25,6 +25,8 @@ namespace backend.Models.Domain
 
         public string Status { get; set; } = "Pending";
 
+        public string? ImageUrl { get; set; }
+
         public DateTime SubmissionDate { get; set; } = DateTime.UtcNow;
 
         [BsonRepresentation(BsonType.ObjectId)]

@@ -1,22 +1,39 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const Card = ({ content }) => {
-  // Fallback for image if API returns null
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    const petId = content.petId || content.id;
+    if (petId) {
+      navigate(`/pet/${petId}`);
+    }
+  };
+
   const imageSrc =
-    content.image || content.imageUrl || "https://via.placeholder.com/150";
+    content.image ||
+    (content.photos && content.photos.length > 0 ? content.photos[0] : null) ||
+    content.imageUrl ||
+    "https://via.placeholder.com/150";
 
   return (
     <button
       type="button"
-      className="rounded-3xl overflow-hidden h-40 w-full md:h-56 relative shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer bg-white group"
+      onClick={handleClick}
+      className="rounded-3xl overflow-hidden h-40 w-full md:h-56 relative shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer bg-white group text-left"
     >
       {/* Image Section (70% height) */}
-      <div className="h-[70%] w-full overflow-hidden">
+      <div className="h-[70%] w-full overflow-hidden relative">
         <img
           src={imageSrc}
           alt={content.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
+        {/* Gender Badge */}
+        <span className="absolute bottom-2 right-2 bg-white/90 px-2 py-0.5 text-[10px] font-bold rounded-full shadow-sm text-slate-700 uppercase tracking-wider">
+          {content.gender || "Pet"}
+        </span>
       </div>
 
       {/* Content Section (30% height) */}

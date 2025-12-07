@@ -17,6 +17,7 @@ namespace backend.Controllers
             _userService = userService;
         }
 
+        // ... (Keep GetPublicArticles, GetMyArticles, GetById, Create, Update, Delete) ...
         [HttpGet]
         public async Task<ActionResult<List<Article>>> GetPublicArticles()
         {
@@ -29,7 +30,6 @@ namespace backend.Controllers
         {
             if (string.IsNullOrEmpty(authorId))
                 return BadRequest("AuthorId is required.");
-
             var articles = await _articleService.GetByAuthorIdAsync(authorId);
             return Ok(articles);
         }
@@ -48,12 +48,10 @@ namespace backend.Controllers
         {
             if (string.IsNullOrEmpty(newArticle.AuthorId))
                 return BadRequest("AuthorId is required.");
-
             var author = await _userService.GetByIdAsync(newArticle.AuthorId);
-            if (author == null || author.UserRole != "NGO")
-                return StatusCode(403, "Access Denied: Only NGOs can post articles.");
+            if (author == null)
+                return BadRequest("User not found.");
 
-            // Force status to Pending to prevent auto-publishing
             newArticle.Status = "Pending";
             newArticle.PublishDate = DateTime.UtcNow;
 
@@ -90,7 +88,6 @@ namespace backend.Controllers
             if (existingArticle is null)
                 return NotFound($"Article not found.");
 
-            // Allow Author OR Admin (if you implement admin role check here) to delete
             if (string.IsNullOrEmpty(currentUserId) || existingArticle.AuthorId != currentUserId)
                 return StatusCode(403, "Access Denied.");
 
@@ -112,6 +109,7 @@ namespace backend.Controllers
             return Ok(articles);
         }
 
+        // --- FIXED ENDPOINT ---
         [HttpPut("admin/status/{id}")]
         public async Task<IActionResult> UpdateStatus(string id, [FromQuery] string status)
         {
@@ -119,9 +117,11 @@ namespace backend.Controllers
             if (article == null)
                 return NotFound();
 
-            article.Status = status;
-            await _articleService.UpdateArticleAsync(id, article);
-            return Ok($"Article {status}");
+            // FIX: Use UpdateStatusAsync instead of UpdateArticleAsync
+            // UpdateArticleAsync strictly updates Title/Content and ignores Status changes.
+            await _articleService.UpdateStatusAsync(id, status);
+
+            return Ok($"Article status updated to {status}");
         }
     }
 }

@@ -16,6 +16,13 @@ namespace backend.Controllers
             _userService = userService;
         }
 
+        [HttpGet("ngos")]
+        public async Task<ActionResult<List<NGO>>> GetAllNgos()
+        {
+            var ngos = await _userService.GetAllNgosAsync();
+            return Ok(ngos);
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {

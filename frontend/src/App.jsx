@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AdoptionForm from "./pages/AdoptionForm";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import PetList from "./pages/PetList";
@@ -14,6 +15,8 @@ import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import Partner from "./pages/Partner";
 import NGODashboard from "./pages/NGODashboard";
+import EventDetail from "./pages/EventDetail";
+import ArticleDetail from "./pages/ArticleDetail";
 
 function App() {
   return (
@@ -30,11 +33,14 @@ function App() {
             <Route path="event" element={<Event />} />
             <Route path="volunteer" element={<Volunteer />} />
             <Route path="map" element={<Map />} />
-            <Route path="petdetail" element={<PetDetail />}></Route>
+            <Route path="pet/:id" element={<PetDetail />}></Route>
             <Route path="profile" element={<Profile />}></Route>
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="partner" element={<Partner />} />
             <Route path="ngo" element={<NGODashboard />} />
+            <Route path="/adopt/apply/:id" element={<AdoptionForm />} />
+            <Route path="/event/:id" element={<EventDetail />} />
+            <Route path="/article/:id" element={<ArticleDetail />} />
           </Route>
         </Routes>
       </BrowserRouter>
