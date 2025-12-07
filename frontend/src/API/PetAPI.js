@@ -29,3 +29,12 @@ export const getPetById = async (id) => {
     throw error;
   }
 };
+
+export const updatePet = async (id, petData, userId) => {
+  try {
+    const response = await axios.put(`${BASE_URL}/Pets/${id}?currentUserId=${userId}`, petData);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

@@ -28,6 +28,7 @@ import {
   approveProposal,
   getMyArticles,
   createArticle,
+  deleteEvent,
 } from "../API/NgoAPI";
 import {
   getMyVolunteerListings,
@@ -135,6 +136,7 @@ function SectionHeader({ title, actionButton }) {
 
 // --- 1. PETS MANAGER ---
 function PetsManager({ user }) {
+  const navigate = useNavigate(); // 1. Hook for navigation
   const [pets, setPets] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [newPet, setNewPet] = useState({
@@ -231,7 +233,8 @@ function PetsManager({ user }) {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (e, id) => {
+    e.stopPropagation(); // 2. Stop click from navigating to detail page
     if (!window.confirm("Delete this listing?")) return;
     try {
       await deletePet(id, user.id);
@@ -367,7 +370,9 @@ function PetsManager({ user }) {
         {pets.map((pet) => (
           <div
             key={pet.petId}
-            className="border rounded-lg p-4 flex flex-col gap-2 bg-white shadow-sm relative"
+            // 3. Make card clickable to navigate
+            onClick={() => navigate(`/pet/${pet.petId}`)}
+            className="border rounded-lg p-4 flex flex-col gap-2 bg-white shadow-sm relative cursor-pointer hover:shadow-md transition-shadow group"
           >
             <img
               src={
@@ -376,7 +381,7 @@ function PetsManager({ user }) {
                   : pet.imageUrl) || "https://via.placeholder.com/150"
               }
               alt={pet.name}
-              className="w-full h-40 object-cover rounded-md bg-gray-200"
+              className="w-full h-40 object-cover rounded-md bg-gray-200 transition-transform group-hover:scale-[1.02] duration-300"
             />
             <h3 className="font-bold text-lg">
               {pet.name}{" "}
@@ -403,8 +408,8 @@ function PetsManager({ user }) {
                 {pet.status}
               </span>
               <button
-                onClick={() => handleDelete(pet.petId)}
-                className="text-red-600 text-sm hover:underline"
+                onClick={(e) => handleDelete(e, pet.petId)}
+                className="text-red-600 text-sm hover:underline z-10"
               >
                 Remove
               </button>
@@ -502,8 +507,8 @@ function AdoptionsManager({ user }) {
 }
 
 // --- 3. EVENTS MANAGER ---
-// --- 3. EVENTS MANAGER ---
 function EventsManager({ user }) {
+  const navigate = useNavigate(); // 1. Initialize navigation hook
   const [subTab, setSubTab] = useState("my_events");
   const [myEvents, setMyEvents] = useState([]);
   const [proposals, setProposals] = useState([]);
@@ -655,7 +660,7 @@ function EventsManager({ user }) {
                     }
                   />
                   <input
-                    placeholder="Location (e.g. Central Park)"
+                    placeholder="Location"
                     required
                     className="p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={newEvent.location}
@@ -686,7 +691,7 @@ function EventsManager({ user }) {
                 </div>
 
                 <textarea
-                  placeholder="Event Description"
+                  placeholder="Description"
                   required
                   className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-32"
                   value={newEvent.description}
@@ -709,14 +714,16 @@ function EventsManager({ user }) {
             {myEvents.map((ev) => (
               <div
                 key={ev.id}
-                className="border p-4 rounded-lg flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow"
+                // 2. CLICKABLE: Navigate to Event Detail
+                onClick={() => navigate(`/event/${ev.id}`)}
+                className="border p-4 rounded-lg flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
               >
                 <div className="flex gap-4 items-center">
                   {ev.imageUrl ? (
                     <img
                       src={ev.imageUrl}
                       alt=""
-                      className="w-20 h-20 rounded-lg object-cover bg-gray-100 border"
+                      className="w-20 h-20 rounded-lg object-cover bg-gray-100 border group-hover:scale-105 transition-transform"
                     />
                   ) : (
                     <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
@@ -724,7 +731,7 @@ function EventsManager({ user }) {
                     </div>
                   )}
                   <div>
-                    <h4 className="font-bold text-lg text-slate-800">
+                    <h4 className="font-bold text-lg text-slate-800 group-hover:text-indigo-600 transition-colors">
                       {ev.title}
                     </h4>
                     <p className="text-sm text-gray-500">
@@ -788,7 +795,7 @@ function EventsManager({ user }) {
                   <h4 className="font-bold text-lg text-slate-800">
                     {prop.title}
                   </h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 mb-2">
                     Proposed by User ID:{" "}
                     <span className="font-mono bg-white px-1 rounded border">
                       {prop.createdById}
@@ -1297,6 +1304,10 @@ function ReportsManager({ user }) {
   const [volunteers, setVolunteers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal State for detailed views
+  const [detailType, setDetailType] = useState(null); // 'adoptions' | 'events' | 'volunteers'
+  const [detailData, setDetailData] = useState([]); // Stores fetched user details
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -1309,7 +1320,7 @@ function ReportsManager({ user }) {
         setEvents(eventsData);
         setVolunteers(volData);
       } catch (error) {
-        console.error("Failed to load report data", error);
+        console.error(error);
         toast.error("Failed to load report data.");
       } finally {
         setLoading(false);
@@ -1318,7 +1329,26 @@ function ReportsManager({ user }) {
     fetchData();
   }, [user.id]);
 
-  // --- 1. Data Processing for Graphs ---
+  // --- Helper to get real participants (excluding NGO itself) ---
+  const getRealParticipants = (ev) => {
+    return ev.participantIds?.filter((id) => id !== user.id) || [];
+  };
+
+  // --- Calculations ---
+  const approvedAdoptions = adoptions.filter((a) => a.status === "Approved");
+  const totalAdoptions = approvedAdoptions.length;
+
+  const totalParticipants = events.reduce(
+    (acc, curr) => acc + getRealParticipants(curr).length,
+    0
+  );
+
+  const totalVolunteers = volunteers.reduce(
+    (acc, curr) => acc + (curr.applicantIds?.length || 0),
+    0
+  );
+
+  // --- Graph Data ---
   const chartData = useMemo(() => {
     const months = [
       "Jan",
@@ -1340,84 +1370,142 @@ function ReportsManager({ user }) {
       Participants: 0,
     }));
 
-    // Process Adoptions (by Submission Date)
-    adoptions.forEach((app) => {
-      if (app.status === "Approved") {
-        const date = new Date(app.submissionDate);
-        const monthIdx = date.getMonth();
-        data[monthIdx].Adoptions += 1;
-      }
+    approvedAdoptions.forEach((app) => {
+      const date = new Date(app.submissionDate || Date.now());
+      if (!isNaN(date)) data[date.getMonth()].Adoptions += 1;
     });
 
-    // Process Event Participants (by Event Date)
     events.forEach((ev) => {
       const date = new Date(ev.eventDate);
-      const monthIdx = date.getMonth();
-      data[monthIdx].Participants += ev.participantIds?.length || 0;
+      if (!isNaN(date))
+        data[date.getMonth()].Participants += getRealParticipants(ev).length;
     });
 
     return data;
   }, [adoptions, events]);
 
-  // --- 2. Statistics Calculations ---
-  const totalAdoptions = adoptions.filter(
-    (a) => a.status === "Approved"
-  ).length;
-  const totalParticipants = events.reduce(
-    (acc, curr) => acc + (curr.participantIds?.length || 0),
-    0
-  );
-  const totalVolunteers = volunteers.reduce(
-    (acc, curr) => acc + (curr.applicantIds?.length || 0),
-    0
-  );
-
-  // --- 3. CSV Generation Helper ---
-  const downloadCSV = (data, filename) => {
-    if (!data || data.length === 0) {
-      toast.error("No data to export.");
-      return;
+  // --- Click Handlers for Details ---
+  const handleShowAdoptionDetails = async () => {
+    setDetailType("loading");
+    try {
+      // Fetch user details for all approved applications
+      const details = await Promise.all(
+        approvedAdoptions.map(async (app) => {
+          try {
+            const userData = await getUserById(app.applicantId);
+            return {
+              ...app,
+              applicantName: userData.name,
+              applicantEmail: userData.email,
+              applicantPhone: userData.contactInfo,
+            };
+          } catch (e) {
+            return { ...app, applicantName: "Unknown", applicantEmail: "N/A" };
+          }
+        })
+      );
+      setDetailData(details);
+      setDetailType("adoptions");
+    } catch (e) {
+      toast.error("Failed to load details");
+      setDetailType(null);
     }
+  };
 
-    // Convert JSON to CSV
-    const headers = Object.keys(data[0]).join(",");
-    const rows = data.map((row) =>
-      Object.values(row)
-        .map((val) => `"${val}"`)
-        .join(",")
+  const handleShowEventDetails = () => {
+    // Just show the list of events first, user clicks specific event to see people
+    setDetailData(events);
+    setDetailType("events");
+  };
+
+  const handleShowVolunteerDetails = () => {
+    setDetailData(volunteers);
+    setDetailType("volunteers");
+  };
+
+  // --- Render Modal ---
+  const renderDetailModal = () => {
+    if (!detailType) return null;
+    if (detailType === "loading")
+      return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg">
+            <div className="animate-spin h-8 w-8 border-4 border-indigo-500 rounded-full border-t-transparent"></div>
+          </div>
+        </div>
+      );
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+          <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+            <h3 className="text-xl font-bold text-slate-800 capitalize">
+              {detailType} Details
+            </h3>
+            <button
+              onClick={() => setDetailType(null)}
+              className="text-gray-500 hover:text-red-500 text-2xl"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div className="p-6 overflow-y-auto flex-1">
+            {/* ADOPTIONS TABLE */}
+            {detailType === "adoptions" && (
+              <table className="w-full text-left text-sm">
+                <thead className="bg-indigo-50 text-indigo-900 uppercase font-bold">
+                  <tr>
+                    <th className="p-3">Pet ID</th>
+                    <th className="p-3">Adopter</th>
+                    <th className="p-3">Contact</th>
+                    <th className="p-3">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {detailData.map((d) => (
+                    <tr key={d.applicationId} className="hover:bg-gray-50">
+                      <td className="p-3 font-mono text-xs">{d.petId}</td>
+                      <td className="p-3 font-bold">{d.applicantName}</td>
+                      <td className="p-3 text-gray-600">
+                        {d.applicantEmail}
+                        <br />
+                        {d.applicantPhone}
+                      </td>
+                      <td className="p-3">
+                        {new Date(d.submissionDate).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* EVENTS LIST (Expandable) */}
+            {detailType === "events" && (
+              <div className="space-y-4">
+                {detailData.map((ev) => (
+                  <EventParticipantsCard key={ev.id} event={ev} user={user} />
+                ))}
+              </div>
+            )}
+
+            {/* VOLUNTEERS LIST (Expandable) */}
+            {detailType === "volunteers" && (
+              <div className="space-y-4">
+                {detailData.map((vol) => (
+                  <VolunteerApplicantsCard
+                    key={vol.id}
+                    listing={vol}
+                    user={user}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     );
-    const csvContent =
-      "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleExportAdoptions = () => {
-    const data = adoptions.map((a) => ({
-      ID: a.applicationId,
-      PetID: a.petId,
-      ApplicantID: a.applicantId,
-      Status: a.status,
-      Date: new Date(a.submissionDate).toLocaleDateString(),
-    }));
-    downloadCSV(data, "adoptions_report.csv");
-  };
-
-  const handleExportEvents = () => {
-    const data = events.map((e) => ({
-      Title: e.title,
-      Date: new Date(e.eventDate).toLocaleDateString(),
-      Location: e.location,
-      Participants: e.participantIds?.length || 0,
-      Status: e.status,
-    }));
-    downloadCSV(data, "events_report.csv");
   };
 
   if (loading)
@@ -1427,106 +1515,86 @@ function ReportsManager({ user }) {
 
   return (
     <div className="space-y-8 animate-fadeIn">
+      {renderDetailModal()}
+
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">
           Performance Overview
         </h2>
-        <div className="flex gap-2">
-          <button
-            onClick={handleExportAdoptions}
-            className="text-sm bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-semibold hover:bg-indigo-100 transition-colors"
-          >
-            📥 Export Adoptions
-          </button>
-          <button
-            onClick={handleExportEvents}
-            className="text-sm bg-teal-50 text-teal-700 px-4 py-2 rounded-lg font-semibold hover:bg-teal-100 transition-colors"
-          >
-            📥 Export Events
-          </button>
-        </div>
+        <p className="text-sm text-gray-500">Click cards for details</p>
       </div>
 
-      {/* STATS CARDS */}
+      {/* CLICKABLE STAT CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="Total Pets Adopted"
           value={totalAdoptions}
-          color="bg-indigo-100 text-indigo-800"
+          color="bg-gradient-to-br from-indigo-500 to-purple-600"
           icon="🏠"
+          textColor="text-white"
+          onClick={handleShowAdoptionDetails}
         />
         <StatCard
           title="Event Participants"
           value={totalParticipants}
-          color="bg-teal-100 text-teal-800"
+          color="bg-gradient-to-br from-teal-400 to-teal-600"
           icon="🎉"
+          textColor="text-white"
+          onClick={handleShowEventDetails}
         />
         <StatCard
           title="Volunteer Applicants"
           value={totalVolunteers}
-          color="bg-amber-100 text-amber-800"
+          color="bg-gradient-to-br from-amber-400 to-orange-500"
           icon="🤝"
+          textColor="text-white"
+          onClick={handleShowVolunteerDetails}
         />
       </div>
 
-      {/* GRAPHS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Chart 1: Adoptions per Month */}
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-700 mb-4">
-            Adoptions Overview (Yearly)
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-700 mb-6">
+            Monthly Adoptions
           </h3>
-          <div className="h-64">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis allowDecimals={false} fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "none",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
                 />
-                <Legend />
+                <Tooltip cursor={{ fill: "#f8fafc" }} />
                 <Bar
                   dataKey="Adoptions"
                   fill="#6366f1"
-                  radius={[4, 4, 0, 0]}
-                  barSize={20}
+                  radius={[6, 6, 0, 0]}
+                  barSize={32}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-
-        {/* Chart 2: Event Participation */}
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-700 mb-4">
-            Event Participation Trends
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <h3 className="text-lg font-bold text-slate-700 mb-6">
+            Community Engagement
           </h3>
-          <div className="h-64">
+          <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" fontSize={12} />
-                <YAxis fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "8px",
-                    border: "none",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} />
+                <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="Participants"
                   stroke="#009e8c"
                   strokeWidth={3}
                   dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -1537,19 +1605,154 @@ function ReportsManager({ user }) {
   );
 }
 
-function StatCard({ title, value, color, icon }) {
+// --- SUB-COMPONENT: Fetch & Show Event Participants ---
+function EventParticipantsCard({ event, user }) {
+  const [participants, setParticipants] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // Filter NGO itself out
+  const realParticipantIds =
+    event.participantIds?.filter((id) => id !== user.id) || [];
+
+  const handleExpand = async () => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (participants) return; // Already fetched
+
+    setLoading(true);
+    try {
+      const data = await Promise.all(
+        realParticipantIds.map((id) => getUserById(id))
+      );
+      setParticipants(data);
+    } catch (e) {
+      toast.error("Error loading participants");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="border rounded-lg bg-white overflow-hidden">
+      <div
+        className="p-4 flex justify-between items-center bg-gray-50 cursor-pointer"
+        onClick={handleExpand}
+      >
+        <div>
+          <h4 className="font-bold text-slate-800">{event.title}</h4>
+          <p className="text-xs text-gray-500">
+            {new Date(event.eventDate).toLocaleDateString()}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-indigo-600">
+            {realParticipantIds.length} Joined
+          </span>
+          <span className="text-gray-400">{expanded ? "▲" : "▼"}</span>
+        </div>
+      </div>
+      {expanded && (
+        <div className="p-4 border-t">
+          {loading ? (
+            <p className="text-sm text-gray-400">Loading...</p>
+          ) : participants && participants.length > 0 ? (
+            <ul className="space-y-2">
+              {participants.map((p) => (
+                <li key={p.id} className="flex justify-between text-sm">
+                  <span className="font-bold">{p.name || p.username}</span>
+                  <span className="text-gray-600">{p.email}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">
+              No external participants yet.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- SUB-COMPONENT: Fetch & Show Volunteer Applicants ---
+function VolunteerApplicantsCard({ listing, user }) {
+  const [apps, setApps] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const handleExpand = async () => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (apps) return;
+
+    try {
+      // Using existing API that fetches applicants for a listing
+      const data = await getApplicants(listing.id, user.id);
+      setApps(data);
+    } catch (e) {
+      toast.error("Error loading applicants");
+    }
+  };
+
+  return (
+    <div className="border rounded-lg bg-white overflow-hidden">
+      <div
+        className="p-4 flex justify-between items-center bg-gray-50 cursor-pointer"
+        onClick={handleExpand}
+      >
+        <div>
+          <h4 className="font-bold text-slate-800">{listing.title}</h4>
+          <p className="text-xs text-gray-500">{listing.location}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-amber-600">
+            {listing.applicantIds?.length || 0} Applied
+          </span>
+          <span className="text-gray-400">{expanded ? "▲" : "▼"}</span>
+        </div>
+      </div>
+      {expanded && (
+        <div className="p-4 border-t">
+          {apps && apps.length > 0 ? (
+            <ul className="space-y-3">
+              {apps.map((p) => (
+                <li key={p.id} className="text-sm border-b pb-2 last:border-0">
+                  <p className="font-bold">{p.name}</p>
+                  <p className="text-gray-600">📧 {p.email}</p>
+                  <p className="text-gray-600">📞 {p.contactInfo || "N/A"}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">No applicants yet.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- HELPER COMPONENTS ---
+function StatCard({ title, value, color, icon, textColor, onClick }) {
   return (
     <div
-      className={`p-6 rounded-xl flex items-center gap-4 shadow-sm ${color}`}
+      onClick={onClick}
+      className={`p-6 rounded-2xl shadow-lg flex items-center justify-between ${color} ${textColor} cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all`}
     >
-      <div className="text-4xl bg-white/40 w-12 h-12 flex items-center justify-center rounded-full">
-        {icon}
-      </div>
       <div>
-        <p className="text-sm font-bold opacity-80 uppercase tracking-wide">
+        <p className="text-xs font-bold uppercase tracking-wider opacity-90 mb-1">
           {title}
         </p>
         <p className="text-4xl font-extrabold">{value}</p>
+      </div>
+      <div className="text-4xl bg-white/20 w-14 h-14 flex items-center justify-center rounded-2xl backdrop-blur-sm">
+        {icon}
       </div>
     </div>
   );

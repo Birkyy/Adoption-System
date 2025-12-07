@@ -55,6 +55,11 @@ export const rejectProposal = async (eventId, ngoId, status) => {
   return response.data;
 };
 
+export const deleteEvent = async (eventId, userId) => {
+  const response = await axios.delete(`${BASE_URL}/Events/${eventId}?currentUserId=${userId}`);
+  return response.data;
+};
+
 // --- ARTICLES ---
 export const getMyArticles = async (authorId) => {
   const response = await axios.get(`${BASE_URL}/Articles/my-articles?authorId=${authorId}`);
