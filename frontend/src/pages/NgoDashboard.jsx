@@ -35,6 +35,7 @@ import {
   createVolunteerListing,
   deleteVolunteerListing,
   getApplicants,
+  getStarTalent,
 } from "../API/VolunteerAPI";
 
 export default function NgoDashboard() {
@@ -1419,7 +1420,9 @@ function ReportsManager({ user }) {
   };
 
   const handleShowVolunteerDetails = () => {
-    setDetailData(volunteers);
+    // Debugging: Check if volunteers has data
+    console.log("Volunteers Data:", volunteers);
+    setDetailData([...volunteers]); // Spread to create a new array reference
     setDetailType("volunteers");
   };
 
@@ -1436,16 +1439,16 @@ function ReportsManager({ user }) {
         </div>
       );
 
-    // 🔴 1. DETERMINE THE COUNT BASED ON THE OPEN TYPE
-    // We use this 'currentCount' to decide if we show the table or the empty message.
-    let currentCount = 0;
-    if (detailType === "adoptions") currentCount = totalAdoptions || 0;
-    if (detailType === "events") currentCount = totalParticipants || 0;
-    if (detailType === "volunteers") currentCount = totalVolunteers || 0;
+    // 1. SELECT DATA SOURCE DIRECTLY (Fixes the sync issue)
+    let currentData = [];
+    if (detailType === "adoptions") currentData = detailData; // Adoptions fetched on demand, keep as is
+    if (detailType === "events") currentData = events; // Use 'events' state directly
+    if (detailType === "volunteers") currentData = volunteers; // Use 'volunteers' state directly
 
-    // 🔴 2. CONDITION: Show table if count > 0 OR if it is 'talent'
-    // This ignores whether the array 'detailData' is empty or not; it trusts your 'total' variables.
-    const showTable = currentCount > 0 || detailType === "talent";
+    // 2. DETERMINE IF EMPTY
+    const hasData = currentData && currentData.length > 0;
+    const isTalent = detailType === "talent";
+    const showContent = hasData || isTalent;
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -1453,7 +1456,7 @@ function ReportsManager({ user }) {
           {/* HEADER */}
           <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
             <h3 className="text-xl font-bold text-slate-800 capitalize">
-              {detailType === "talent"
+              {isTalent
                 ? "⭐ Star Volunteer Discovery"
                 : `${detailType} Details`}
             </h3>
@@ -1467,8 +1470,8 @@ function ReportsManager({ user }) {
 
           {/* BODY */}
           <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
-            {/* 🟢 EMPTY STATE LOGIC (If !showTable) 🟢 */}
-            {!showTable ? (
+            {/* 🟢 EMPTY STATE LOGIC 🟢 */}
+            {!showContent ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="bg-slate-100 p-6 rounded-full mb-4 text-4xl">
                   {detailType === "adoptions" && "🏠"}
@@ -1482,11 +1485,12 @@ function ReportsManager({ user }) {
                   {detailType === "adoptions" &&
                     "No pending adoption requests."}
                   {detailType === "events" && "No active participants."}
-                  {detailType === "volunteers" && "No volunteer applicants."}
+                  {detailType === "volunteers" &&
+                    "No volunteer listings created yet."}
                 </p>
               </div>
             ) : (
-              // 🔴 DATA EXISTS (currentCount > 0) - SHOW TABLES 🔴
+              // 🔴 DATA EXISTS - RENDER TABLES 🔴
               <>
                 {/* ADOPTIONS TABLE */}
                 {detailType === "adoptions" && (
@@ -1500,8 +1504,7 @@ function ReportsManager({ user }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {/* Added (detailData || []) to prevent crash if count > 0 but data is missing */}
-                        {(detailData || []).map((d) => (
+                        {currentData.map((d) => (
                           <tr
                             key={d.id || Math.random()}
                             className="hover:bg-gray-50"
@@ -1527,7 +1530,7 @@ function ReportsManager({ user }) {
                 {/* EVENTS LIST */}
                 {detailType === "events" && (
                   <div className="space-y-4">
-                    {(detailData || []).map((ev) => (
+                    {currentData.map((ev) => (
                       <EventParticipantsCard
                         key={ev.id}
                         event={ev}
@@ -1540,7 +1543,7 @@ function ReportsManager({ user }) {
                 {/* VOLUNTEERS LIST */}
                 {detailType === "volunteers" && (
                   <div className="space-y-4">
-                    {(detailData || []).map((vol) => (
+                    {currentData.map((vol) => (
                       <VolunteerApplicantsCard
                         key={vol.id}
                         listing={vol}
@@ -1549,12 +1552,15 @@ function ReportsManager({ user }) {
                     ))}
                   </div>
                 )}
-              </>
-            )}
 
-            {/* TALENT TOOL (Always shows independent of count) */}
-            {detailType === "talent" && (
-              <TalentDiscoveryTool events={events} volunteers={volunteers} />
+                {isTalent && (
+                  <TalentDiscoveryTool
+                    events={events}
+                    volunteers={volunteers}
+                    user={user}
+                  />
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1805,99 +1811,105 @@ function VolunteerApplicantsCard({ listing, user }) {
   );
 }
 
-function TalentDiscoveryTool({ events = [], volunteers = [] }) {
-  const [threshold, setThreshold] = useState(3); // Default: 3 activities
-  const [topUsers, setTopUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+// --- NEW: STAR VOLUNTEER DISCOVERY TOOL ---
+function TalentDiscoveryTool({ user }) {
+  const [topVolunteers, setTopVolunteers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    const userMap = {};
-
-    // 1. Scan Events (Approvals or Participants)
-    events.forEach((ev) => {
-      // Assuming 'participantIds' exists
-      if (ev.participantIds && ev.participantIds.length > 0) {
-        ev.participantIds.forEach((uid) => {
-          if (!userMap[uid]) userMap[uid] = { id: uid, count: 0, sources: [] };
-          userMap[uid].count += 1;
-          userMap[uid].sources.push(`Event: ${ev.title}`);
-        });
+    const fetchTalent = async () => {
+      try {
+        setLoading(true);
+        // 🟢 CALL THE NEW API
+        const data = await getStarTalent(user.id);
+        setTopVolunteers(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
 
-    // 2. Scan Volunteer Jobs (Applicants)
-    volunteers.forEach((vol) => {
-      if (vol.applicantIds && vol.applicantIds.length > 0) {
-        vol.applicantIds.forEach((uid) => {
-          if (!userMap[uid]) userMap[uid] = { id: uid, count: 0, sources: [] };
-          userMap[uid].count += 1;
-          userMap[uid].sources.push(`Role: ${vol.title}`);
-        });
-      }
-    });
+    if (user?.id) {
+      fetchTalent();
+    }
+  }, [user.id]);
 
-    // 3. Filter & Sort
-    const qualified = Object.values(userMap)
-      .filter((u) => u.count >= threshold)
-      .sort((a, b) => b.count - a.count);
+  if (loading)
+    return (
+      <div className="p-8 text-center text-gray-500">Discovering stars...</div>
+    );
 
-    setTopUsers(qualified);
-    setLoading(false);
-  }, [events, volunteers, threshold]);
+  if (!topVolunteers || topVolunteers.length === 0)
+    return (
+      <div className="p-8 text-center flex flex-col items-center">
+        <span className="text-4xl mb-2">🌟</span>
+        <h4 className="text-lg font-bold text-slate-700">No Stars Yet</h4>
+        <p className="text-slate-500 text-sm">
+          Once users participate in events or apply for roles, your top stars
+          will appear here.
+        </p>
+      </div>
+    );
 
   return (
     <div className="space-y-6">
-      {/* CONTROL BAR */}
-      <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-lg flex gap-4 items-start">
+        <div className="text-3xl">💡</div>
         <div>
-          <h4 className="font-bold text-slate-800">Adjust Criteria</h4>
-          <p className="text-xs text-slate-500">
-            Show users who joined at least <strong>{threshold}</strong>{" "}
-            activities.
+          <h4 className="font-bold text-indigo-900">
+            Star Volunteer Discovery
+          </h4>
+          <p className="text-sm text-indigo-700">
+            Top engaged users based on event participation and volunteer
+            applications.
           </p>
-        </div>
-
-        <div className="flex items-center bg-slate-100 rounded-lg p-1">
-          <button
-            onClick={() => setThreshold(Math.max(1, threshold - 1))}
-            className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-slate-700 font-bold hover:bg-indigo-50"
-          >
-            -
-          </button>
-          <span className="w-12 text-center font-bold text-indigo-600 text-lg">
-            {threshold}
-          </span>
-          <button
-            onClick={() => setThreshold(threshold + 1)}
-            className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-slate-700 font-bold hover:bg-indigo-50"
-          >
-            +
-          </button>
         </div>
       </div>
 
-      {/* RESULTS LIST */}
-      <div className="min-h-[200px]">
-        {loading ? (
-          <div className="text-center py-10 text-slate-400">
-            Scanning records...
+      <div className="grid gap-4">
+        {topVolunteers.map((person, index) => (
+          <div
+            key={person.id}
+            className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div
+                className={`w-8 h-8 flex items-center justify-center rounded-full font-bold text-white shrink-0 ${
+                  index === 0
+                    ? "bg-yellow-400 ring-4 ring-yellow-100"
+                    : index === 1
+                    ? "bg-slate-400"
+                    : index === 2
+                    ? "bg-orange-400"
+                    : "bg-indigo-400"
+                }`}
+              >
+                #{index + 1}
+              </div>
+              <div>
+                <h4 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                  {person.name}
+                  {index === 0 && <span>👑</span>}
+                </h4>
+                <div className="text-xs text-white bg-indigo-500 px-2 py-0.5 rounded-full inline-block">
+                  {person.score} Engagements
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start md:items-end gap-1 mt-4 md:mt-0 w-full md:w-auto text-sm">
+              <div className="flex items-center gap-2 text-slate-600">
+                <span className="text-lg">📧</span>
+                <span>{person.email}</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-600">
+                <span className="text-lg">📞</span>
+                <span>{person.contactInfo || "N/A"}</span>
+              </div>
+            </div>
           </div>
-        ) : topUsers.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-white">
-            <p className="text-4xl mb-2">🔍</p>
-            <h4 className="font-bold text-slate-600">No matches found</h4>
-            <p className="text-sm text-slate-400">
-              Try lowering the threshold to {threshold - 1}.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {topUsers.map((stats) => (
-              <TalentUserCard key={stats.id} stats={stats} />
-            ))}
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );

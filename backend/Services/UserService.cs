@@ -21,6 +21,12 @@ namespace backend.Services
             );
         }
 
+        public async Task<List<User>> GetUsersByIdsAsync(List<string> userIds)
+        {
+            var filter = Builders<User>.Filter.In(u => u.Id, userIds);
+            return await _usersCollection.Find(filter).ToListAsync();
+        }
+
         private string HashPassword(string plainPassword)
         {
             return BCrypt.Net.BCrypt.HashPassword(plainPassword);

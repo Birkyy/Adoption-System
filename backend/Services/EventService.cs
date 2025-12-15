@@ -36,6 +36,9 @@ namespace backend.Services
             await _eventsCollection.InsertOneAsync(newEvent);
         }
 
+        public async Task<List<Event>> GetByNgoIdAsync(string ngoId) =>
+            await _eventsCollection.Find(x => x.NgoId == ngoId).ToListAsync();
+
         public async Task<List<Event>> GetAllAsync() =>
             await _eventsCollection.Find(_ => true).ToListAsync();
 

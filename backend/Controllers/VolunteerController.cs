@@ -10,11 +10,17 @@ namespace backend.Controllers
     {
         private readonly VolunteerService _volunteerService;
         private readonly UserService _userService;
+        private readonly EventService _eventService;
 
-        public VolunteerController(VolunteerService volunteerService, UserService userService)
+        public VolunteerController(
+            VolunteerService volunteerService,
+            UserService userService,
+            EventService eventService
+        )
         {
             _volunteerService = volunteerService;
             _userService = userService;
+            _eventService = eventService;
         }
 
         [HttpGet]
@@ -31,6 +37,71 @@ namespace backend.Controllers
                 return BadRequest("NgoId is required.");
             var listings = await _volunteerService.GetByNgoIdAsync(ngoId);
             return Ok(listings);
+        }
+
+        [HttpGet("star-talent/{ngoId}")]
+        public async Task<IActionResult> GetStarTalent(string ngoId)
+        {
+            // 1. Fetch Data using Services (Not direct collection access)
+            var events = await _eventService.GetByNgoIdAsync(ngoId);
+            var listings = await _volunteerService.GetByNgoIdAsync(ngoId);
+
+            // 2. Calculate Scores
+            var scores = new Dictionary<string, int>();
+
+            // Score from Events
+            foreach (var ev in events)
+            {
+                if (ev.ParticipantIds == null)
+                    continue;
+                foreach (var userId in ev.ParticipantIds)
+                {
+                    if (!scores.ContainsKey(userId))
+                        scores[userId] = 0;
+                    scores[userId]++;
+                }
+            }
+
+            // Score from Volunteer Applications
+            foreach (var vol in listings)
+            {
+                if (vol.ApplicantIds == null)
+                    continue;
+                foreach (var userId in vol.ApplicantIds)
+                {
+                    if (!scores.ContainsKey(userId))
+                        scores[userId] = 0;
+                    scores[userId]++;
+                }
+            }
+
+            // 3. Get Top 5 User IDs
+            var topUserIds = scores
+                .OrderByDescending(x => x.Value)
+                .Take(5)
+                .Select(x => x.Key)
+                .ToList();
+
+            if (!topUserIds.Any())
+                return Ok(new List<object>());
+
+            // 4. Fetch User Details using UserService
+            var topUsers = await _userService.GetUsersByIdsAsync(topUserIds);
+
+            // 5. Combine & Return
+            var result = topUsers
+                .Select(u => new
+                {
+                    u.Id,
+                    Name = u.Name ?? u.Username ?? "Unknown",
+                    u.Email,
+                    u.ContactInfo,
+                    Score = scores[u.Id], // Map score back to user
+                })
+                .OrderByDescending(x => x.Score)
+                .ToList();
+
+            return Ok(result);
         }
 
         [HttpPost]
