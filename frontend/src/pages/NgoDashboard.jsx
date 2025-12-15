@@ -1426,81 +1426,135 @@ function ReportsManager({ user }) {
   // --- Render Modal ---
   const renderDetailModal = () => {
     if (!detailType) return null;
+
     if (detailType === "loading")
       return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
             <div className="animate-spin h-8 w-8 border-4 border-indigo-500 rounded-full border-t-transparent"></div>
           </div>
         </div>
       );
 
+    // 🔴 1. DETERMINE THE COUNT BASED ON THE OPEN TYPE
+    // We use this 'currentCount' to decide if we show the table or the empty message.
+    let currentCount = 0;
+    if (detailType === "adoptions") currentCount = totalAdoptions || 0;
+    if (detailType === "events") currentCount = totalParticipants || 0;
+    if (detailType === "volunteers") currentCount = totalVolunteers || 0;
+
+    // 🔴 2. CONDITION: Show table if count > 0 OR if it is 'talent'
+    // This ignores whether the array 'detailData' is empty or not; it trusts your 'total' variables.
+    const showTable = currentCount > 0 || detailType === "talent";
+
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-        <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
-          <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+          {/* HEADER */}
+          <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
             <h3 className="text-xl font-bold text-slate-800 capitalize">
-              {detailType} Details
+              {detailType === "talent"
+                ? "⭐ Star Volunteer Discovery"
+                : `${detailType} Details`}
             </h3>
             <button
               onClick={() => setDetailType(null)}
-              className="text-gray-500 hover:text-red-500 text-2xl"
+              className="text-gray-400 hover:text-red-500 transition-colors text-2xl"
             >
               &times;
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto flex-1">
-            {/* ADOPTIONS TABLE */}
-            {detailType === "adoptions" && (
-              <table className="w-full text-left text-sm">
-                <thead className="bg-indigo-50 text-indigo-900 uppercase font-bold">
-                  <tr>
-                    <th className="p-3">Pet ID</th>
-                    <th className="p-3">Adopter</th>
-                    <th className="p-3">Contact</th>
-                    <th className="p-3">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {detailData.map((d) => (
-                    <tr key={d.applicationId} className="hover:bg-gray-50">
-                      <td className="p-3 font-mono text-xs">{d.petId}</td>
-                      <td className="p-3 font-bold">{d.applicantName}</td>
-                      <td className="p-3 text-gray-600">
-                        {d.applicantEmail}
-                        <br />
-                        {d.applicantPhone}
-                      </td>
-                      <td className="p-3">
-                        {new Date(d.submissionDate).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* BODY */}
+          <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+            {/* 🟢 EMPTY STATE LOGIC (If !showTable) 🟢 */}
+            {!showTable ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="bg-slate-100 p-6 rounded-full mb-4 text-4xl">
+                  {detailType === "adoptions" && "🏠"}
+                  {detailType === "events" && "📅"}
+                  {detailType === "volunteers" && "👐"}
+                </div>
+                <h4 className="text-lg font-bold text-slate-700 capitalize">
+                  No {detailType} Found
+                </h4>
+                <p className="text-slate-500 mt-1 max-w-xs mx-auto">
+                  {detailType === "adoptions" &&
+                    "No pending adoption requests."}
+                  {detailType === "events" && "No active participants."}
+                  {detailType === "volunteers" && "No volunteer applicants."}
+                </p>
+              </div>
+            ) : (
+              // 🔴 DATA EXISTS (currentCount > 0) - SHOW TABLES 🔴
+              <>
+                {/* ADOPTIONS TABLE */}
+                {detailType === "adoptions" && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50 text-gray-600 font-bold uppercase text-xs">
+                        <tr>
+                          <th className="p-4">Applicant</th>
+                          <th className="p-4">Pet</th>
+                          <th className="p-4">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {/* Added (detailData || []) to prevent crash if count > 0 but data is missing */}
+                        {(detailData || []).map((d) => (
+                          <tr
+                            key={d.id || Math.random()}
+                            className="hover:bg-gray-50"
+                          >
+                            <td className="p-4 font-bold text-slate-700">
+                              {d.applicantName || "Unknown"}
+                            </td>
+                            <td className="p-4 text-indigo-600">
+                              {d.petName || d.petId}
+                            </td>
+                            <td className="p-4">
+                              <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-bold">
+                                Pending
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* EVENTS LIST */}
+                {detailType === "events" && (
+                  <div className="space-y-4">
+                    {(detailData || []).map((ev) => (
+                      <EventParticipantsCard
+                        key={ev.id}
+                        event={ev}
+                        user={user}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* VOLUNTEERS LIST */}
+                {detailType === "volunteers" && (
+                  <div className="space-y-4">
+                    {(detailData || []).map((vol) => (
+                      <VolunteerApplicantsCard
+                        key={vol.id}
+                        listing={vol}
+                        user={user}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
-            {/* EVENTS LIST (Expandable) */}
-            {detailType === "events" && (
-              <div className="space-y-4">
-                {detailData.map((ev) => (
-                  <EventParticipantsCard key={ev.id} event={ev} user={user} />
-                ))}
-              </div>
-            )}
-
-            {/* VOLUNTEERS LIST (Expandable) */}
-            {detailType === "volunteers" && (
-              <div className="space-y-4">
-                {detailData.map((vol) => (
-                  <VolunteerApplicantsCard
-                    key={vol.id}
-                    listing={vol}
-                    user={user}
-                  />
-                ))}
-              </div>
+            {/* TALENT TOOL (Always shows independent of count) */}
+            {detailType === "talent" && (
+              <TalentDiscoveryTool events={events} volunteers={volunteers} />
             )}
           </div>
         </div>
@@ -1516,7 +1570,6 @@ function ReportsManager({ user }) {
   return (
     <div className="space-y-8 animate-fadeIn">
       {renderDetailModal()}
-
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">
           Performance Overview
@@ -1524,34 +1577,48 @@ function ReportsManager({ user }) {
         <p className="text-sm text-gray-500">Click cards for details</p>
       </div>
 
-      {/* CLICKABLE STAT CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* CLICKABLE STAT CARDS - NOW WITH 4 COLUMNS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Existing Card 1 */}
         <StatCard
           title="Total Pets Adopted"
           value={totalAdoptions}
           color="bg-gradient-to-br from-indigo-500 to-purple-600"
           icon="🏠"
           textColor="text-white"
-          onClick={handleShowAdoptionDetails}
+          onClick={() => setDetailType("adoptions")}
         />
+
+        {/* Existing Card 2 */}
         <StatCard
           title="Event Participants"
           value={totalParticipants}
           color="bg-gradient-to-br from-teal-400 to-teal-600"
           icon="🎉"
           textColor="text-white"
-          onClick={handleShowEventDetails}
+          onClick={() => setDetailType("events")}
         />
+
+        {/* Existing Card 3 */}
         <StatCard
           title="Volunteer Applicants"
           value={totalVolunteers}
           color="bg-gradient-to-br from-amber-400 to-orange-500"
           icon="🤝"
           textColor="text-white"
-          onClick={handleShowVolunteerDetails}
+          onClick={() => setDetailType("volunteers")}
+        />
+
+        {/* 🟢 NEW 4TH CARD: STAR TALENT DISCOVERY 🟢 */}
+        <StatCard
+          title="Star Volunteers"
+          value="Find"
+          color="bg-gradient-to-br from-pink-500 to-rose-600"
+          icon="⭐"
+          textColor="text-white"
+          onClick={() => setDetailType("talent")} // Opens the new tool
         />
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <h3 className="text-lg font-bold text-slate-700 mb-6">
@@ -1734,6 +1801,139 @@ function VolunteerApplicantsCard({ listing, user }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function TalentDiscoveryTool({ events = [], volunteers = [] }) {
+  const [threshold, setThreshold] = useState(3); // Default: 3 activities
+  const [topUsers, setTopUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    const userMap = {};
+
+    // 1. Scan Events (Approvals or Participants)
+    events.forEach((ev) => {
+      // Assuming 'participantIds' exists
+      if (ev.participantIds && ev.participantIds.length > 0) {
+        ev.participantIds.forEach((uid) => {
+          if (!userMap[uid]) userMap[uid] = { id: uid, count: 0, sources: [] };
+          userMap[uid].count += 1;
+          userMap[uid].sources.push(`Event: ${ev.title}`);
+        });
+      }
+    });
+
+    // 2. Scan Volunteer Jobs (Applicants)
+    volunteers.forEach((vol) => {
+      if (vol.applicantIds && vol.applicantIds.length > 0) {
+        vol.applicantIds.forEach((uid) => {
+          if (!userMap[uid]) userMap[uid] = { id: uid, count: 0, sources: [] };
+          userMap[uid].count += 1;
+          userMap[uid].sources.push(`Role: ${vol.title}`);
+        });
+      }
+    });
+
+    // 3. Filter & Sort
+    const qualified = Object.values(userMap)
+      .filter((u) => u.count >= threshold)
+      .sort((a, b) => b.count - a.count);
+
+    setTopUsers(qualified);
+    setLoading(false);
+  }, [events, volunteers, threshold]);
+
+  return (
+    <div className="space-y-6">
+      {/* CONTROL BAR */}
+      <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h4 className="font-bold text-slate-800">Adjust Criteria</h4>
+          <p className="text-xs text-slate-500">
+            Show users who joined at least <strong>{threshold}</strong>{" "}
+            activities.
+          </p>
+        </div>
+
+        <div className="flex items-center bg-slate-100 rounded-lg p-1">
+          <button
+            onClick={() => setThreshold(Math.max(1, threshold - 1))}
+            className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-slate-700 font-bold hover:bg-indigo-50"
+          >
+            -
+          </button>
+          <span className="w-12 text-center font-bold text-indigo-600 text-lg">
+            {threshold}
+          </span>
+          <button
+            onClick={() => setThreshold(threshold + 1)}
+            className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-slate-700 font-bold hover:bg-indigo-50"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* RESULTS LIST */}
+      <div className="min-h-[200px]">
+        {loading ? (
+          <div className="text-center py-10 text-slate-400">
+            Scanning records...
+          </div>
+        ) : topUsers.length === 0 ? (
+          <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl bg-white">
+            <p className="text-4xl mb-2">🔍</p>
+            <h4 className="font-bold text-slate-600">No matches found</h4>
+            <p className="text-sm text-slate-400">
+              Try lowering the threshold to {threshold - 1}.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {topUsers.map((stats) => (
+              <TalentUserCard key={stats.id} stats={stats} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- SUB-COMPONENT: USER CARD ---
+function TalentUserCard({ stats }) {
+  // Mock User Data (Replace with getUserById(stats.id) in real app)
+  // For demo, we just show generic data + stats
+  return (
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-indigo-300 transition-colors">
+      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+        {stats.count}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between">
+          <h5 className="font-bold text-slate-800">
+            User ID: {stats.id.substring(0, 5)}...
+          </h5>
+          <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">
+            Active
+          </span>
+        </div>
+        <p className="text-xs text-slate-500 mt-1 truncate">
+          Recent: {stats.sources[0]}
+        </p>
+        <div className="mt-3 flex gap-2">
+          {/* Fake Actions for Demo */}
+          <button className="text-xs bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded border border-slate-200 font-semibold">
+            Email
+          </button>
+          <button className="text-xs bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded border border-slate-200 font-semibold">
+            Call
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
