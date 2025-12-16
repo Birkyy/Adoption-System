@@ -34,7 +34,7 @@ export const getApplicants = async (listingId, currentUserId) => {
 
 export const getStarTalent = async (ngoId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/star-talent/${ngoId}`);
+    const response = await axios.get(`${BASE_URL}/Volunteer/star-talent/${ngoId}`);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch star talent:", error);

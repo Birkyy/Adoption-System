@@ -4,6 +4,9 @@ import Slider from "../components/Slider.jsx";
 import CardButton from "../components/CardButton.jsx";
 import Card from "../components/Card.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
+import PetFood from "../assets/icons/dog-food.svg"; // 2. Import Food Image
+import PetBowl from "../assets/icons/pet-bowl.svg";
+import Collar from "../assets/icons/collar.svg";
 
 // Import the separated API function
 import { getPetsBySpecies } from "../API/PetAPI";
@@ -18,7 +21,7 @@ import SliderPets from "../assets/images/pets.png";
 import SliderOwner from "../assets/images/pet-owner-1.png";
 import SliderVolunteer1 from "../assets/images/volunteer-1.png";
 import SliderVolunteer2 from "../assets/images/volunteer-2.png";
-
+import PawBackground from "../assets/icons/paw.svg";
 import DogIcon from "../assets/icons/dog.svg?react";
 import CatIcon from "../assets/icons/cat.svg?react";
 import Paw from "../assets/icons/paw1.svg?react";
@@ -147,15 +150,45 @@ function Home() {
           <Slider />
         </section>
 
-        <section className="relative min-h-screen snap-start bg-[#f8d6c4] flex flex-col items-center justify-center gap-5 sm:gap-7 lg:gap-5">
-          {/* Category Buttons */}
-          <CardButton
-            contents={BUTTON_CONTENTS}
-            activeCategory={activeCategory}
-            onCategoryChange={setActiveCategory}
-          />
+        {/* SECTION 2: Pet List with Paw Pattern */}
+        <section
+          id="pet-list-section"
+          className="relative min-h-screen snap-start bg-[#f8d6c4] flex flex-col items-center justify-center gap-5 sm:gap-7 lg:gap-5 overflow-hidden"
+        >
+          {/* 🟢 PAW PATTERN BACKGROUND (Copied from Slider 1) */}
+          <div className="absolute inset-0 pointer-events-none z-0">
+            <img
+              src={PawBackground}
+              alt=""
+              className="absolute fill-amber-800 bottom-1/3 right-7/10 opacity-10 w-1/2 -rotate-30"
+            />
+            <img
+              src={PawBackground}
+              alt=""
+              className="absolute fill-amber-800 bottom-1/4 right-3/100 opacity-10 w-1/3 rotate-45"
+            />
+            <img
+              src={PawBackground}
+              alt=""
+              className="absolute fill-amber-800 top-7/10 left-27/100 opacity-10 w-1/4 rotate-15"
+            />
+            <img
+              src={PawBackground}
+              alt=""
+              className="absolute fill-amber-800 top-19/20 left-8/10 opacity-10 w-1/5 -rotate-15"
+            />
+          </div>
 
-          {/* Pet Grid */}
+          {/* Category Buttons (Added relative z-10 to ensure clickability) */}
+          <div className="relative z-10 space-x-5">
+            <CardButton
+              contents={BUTTON_CONTENTS}
+              activeCategory={activeCategory}
+              onCategoryChange={setActiveCategory}
+            />
+          </div>
+
+          {/* Pet Grid (Existing z-10 is good) */}
           <div className="max-sm:flex max-sm:flex-col max-sm:gap-y-10 grid grid-cols-2 gap-7 xl:(grid-cols-3 gap-10) relative z-10 min-h-[400px]">
             {isFetching ? (
               <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50">
@@ -182,10 +215,7 @@ function Home() {
               </div>
             ) : visibleCards.length > 0 ? (
               visibleCards.map((pet) => (
-                <Card
-                  key={pet.petId || pet.id} // Ensure unique key using database ID
-                  content={pet} // Pass the full pet object
-                />
+                <Card key={pet.petId || pet.id} content={pet} />
               ))
             ) : (
               <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50 mt-10">
@@ -196,22 +226,44 @@ function Home() {
             )}
           </div>
 
+          {/* Browse More Link (Added relative z-10) */}
           <NavLink
             to="/adopt"
-            className="md:mt-5 fredoka font-semibold tracking-wide text-lg text-[hsl(228,14%,50%)] hover:(text-[#bc9da7] text-shadow-md) text-shadow-sm transition-all duration-500 ease-in-out cursor-pointer"
+            className="relative z-10 md:mt-5 fredoka font-semibold tracking-wide text-lg text-[hsl(228,14%,50%)] hover:(text-[#bc9da7] text-shadow-md) text-shadow-sm transition-all duration-500 ease-in-out cursor-pointer"
           >
             Browse More
           </NavLink>
 
+          {/* Peeking Cat (Kept at z-0 or z-10 as preferred) */}
           <img
             src={PeekingCat}
             alt=""
-            className="absolute bottom-0 -right-3 max-md:h-50/100 md:max-xl:w-20/100 xl:w-18/100 z-0"
+            className="absolute bottom-0 -right-3 max-md:h-50/100 md:max-xl:w-20/100 xl:w-18/100 z-10 pointer-events-none"
           />
         </section>
 
         {/* ... Rest of your sections (Adoption Journey, Hero, Partner) remain unchanged ... */}
-        <section className="relative min-h-screen snap-start snap-always bg-gray-100 flex items-center justify-center box-border w-full">
+        <section
+          id="hero-section"
+          className="relative min-h-screen snap-start snap-always bg-gray-100 flex items-center justify-center box-border w-full"
+        >
+          <img
+            src={PetFood}
+            alt="Pet Food"
+            className="absolute left-15 top-1/8 w-24 md:w-48 lg:w-64 opacity-20 hidden sm:block"
+          />
+
+          {/* 🟢 DECORATION: Floating Pet Drink (Right Side) */}
+          <img
+            src={PetBowl}
+            alt="Pet Bowl"
+            className="absolute right-5 bottom-1/4 w-24 md:w-48 lg:w-64 opacity-20 z-10 hidden sm:block"
+          />
+          <img
+            src={Collar}
+            alt="Collar"
+            className="absolute right-2/5 bottom-0 w-24 md:w-48 lg:w-80 opacity-20 z-10 hidden sm:block rotate-12"
+          />
           <div className="flex flex-col items-center justify-center gap-3 lg:gap-8 relative z-10">
             <h1 className="text-2xl md:text-4xl lg:text-6xl font-bold gloria">
               Your Adoption Journey
@@ -219,10 +271,8 @@ function Home() {
             <ol className="adopt-list gloria text-sm md:(text-2xl min-w-lg) lg:(text-3xl min-w-2xl) p-1 min-w-2xs rounded-sm mb-2">
               <li>Browse.</li>
               <li>Choose a pet.</li>
-              <li>Check the criteria.</li>
               <li>Fill in the form and submit.</li>
               <li>Wait for approval.</li>
-              <li>Book a time with the NGO.</li>
               <li>You have a new friend!</li>
             </ol>
             <div className="flex flex-row gloria w-full gap-2">
@@ -232,9 +282,6 @@ function Home() {
               >
                 Ready to Adopt?
               </NavLink>
-              <button className="flex-3 text-sm font-medium py-3 bg-amber-200 border-2 border-amber-800 hover:(bg-amber-500 border-amber-500 text-white) hover:transition-all duration-300 ease-in-out text-amber-800 rounded-3xl shadow-xl cursor-pointer">
-                Learn More
-              </button>
             </div>
           </div>
           <img
@@ -244,44 +291,76 @@ function Home() {
           />
         </section>
 
-        <section className="relative min-h-screen snap-start snap-always bg-gray-100 flex items-center justify-center box-border w-full">
-          <div className="relative flex flex-col items-center justify-center gap-5 md:gap-8 w-full h-screen z-10">
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold gloria">
+        {/* SECTION 4: Ready to be the Hero */}
+        <section
+          id="hero-section"
+          className="relative min-h-screen snap-start snap-always bg-gray-100 flex items-center justify-center box-border w-full py-20"
+        >
+          <div className="relative flex flex-col items-center justify-center gap-10 md:gap-14 w-full max-w-7xl px-5 z-10">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold gloria text-center leading-tight">
               Ready to be the Hero?
             </h1>
-            <div className="flex flex-col lg:flex-row gap-10 gloria justify-center items-center w-full">
-              <div className="flex flex-col gap-1 shadow-2xl rounded-2xl bg-red-300 px-10 py-5 w-3/4 md:(w-4/7 px-15) max-lg:min-h-1/2 lg:max-w-2/5 transition-transform hover:scale-105 duration-300">
-                <img src={Event} alt="" className="h-25 md:h-40 self-center" />
-                <h1 className="text-lg md:text-2xl xl:text-4xl font-extrabold">
-                  Be the Hero in Event!
-                </h1>
-                <p className="text-xs md:text-sm">
-                  There are various events for you to join including campaigns,
-                  one-day volunteer, charity bazaar, etc.
-                </p>
+
+            {/* 🟢 CARDS CONTAINER: items-stretch forces equal height, gap-10/20 adds spacing */}
+            <div className="flex flex-col lg:flex-row gap-10 lg:gap-20 w-full justify-center items-stretch px-4">
+              {/* Card 1: Event */}
+              <div
+                onClick={() => navigate("/event")}
+                className="flex-1 flex flex-col bg-red-300 rounded-3xl p-8 lg:p-12 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer min-h-[20h0px]"
+              >
+                {/* Image Area - Centered */}
+                <div className="flex-1 flex items-center justify-center mb-6">
+                  <img
+                    src={Event}
+                    alt="Event"
+                    className="h-16 md:h-48 object-contain"
+                  />
+                </div>
+                {/* Text Area */}
+                <div className="flex flex-col gap-3 text-center">
+                  <h1 className="text-2xl md:text-3xl xl:text-4xl font-extrabold gloria text-slate-900">
+                    Be the Hero in Event!
+                  </h1>
+                  <p className="text-sm md:text-base fredoka font-medium text-slate-800 leading-relaxed">
+                    There are various events for you to join including
+                    campaigns, one-day volunteer, charity bazaar, etc.
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col gap-1 shadow-2xl rounded-2xl bg-amber-200 px-10 py-5 w-3/4 md:(w-4/7 px-15) max-lg:min-h-1/2 lg:(max-w-2/5) transition-transform hover:scale-105 duration-300">
-                <img
-                  src={Volunteer}
-                  alt=""
-                  className="h-25 md:h-40 self-center"
-                />
-                <h1 className="text-lg md:text-2xl xl:text-4xl font-extrabold">
-                  Be the Hero in Shelter!
-                </h1>
-                <p className="text-xs md:text-sm">
-                  In here, you can feed, bath and play with the animal!
-                </p>
+
+              {/* Card 2: Shelter */}
+              <div
+                onClick={() => navigate("/volunteer")}
+                className="flex-1 flex flex-col bg-amber-200 rounded-3xl p-8 lg:p-12 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer min-h-[200px]"
+              >
+                {/* Image Area - Centered */}
+                <div className="flex-1 flex items-center justify-center mb-6">
+                  <img
+                    src={Volunteer}
+                    alt="Shelter"
+                    className="h-16 md:h-48 object-contain"
+                  />
+                </div>
+                {/* Text Area */}
+                <div className="flex flex-col gap-3 text-center">
+                  <h1 className="text-2xl md:text-3xl xl:text-4xl font-extrabold gloria text-slate-900">
+                    Be the Hero in Shelter!
+                  </h1>
+                  <p className="text-sm md:text-base fredoka font-medium text-slate-800 leading-relaxed">
+                    In here, you can feed, bath and play with the animal!
+                  </p>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* 🐱 YOUR CAT PHOTO (Kept exactly as requested) */}
           <img
             src={PeekingCat2}
             alt=""
-            className="absolute top-0 left-0 max-md:h-13/100 max-lg:h-20/100 lg:w-22/100 z-0 overflow-hidden"
+            className="absolute top-0 left-0 max-md:h-13/100 max-lg:h-20/100 lg:w-22/100 z-0 overflow-hidden pointer-events-none"
           />
         </section>
-
         <section className="relative min-h-screen snap-start snap-always bg-[#009e8c] flex items-center justify-center text-center px-6">
           <div className="max-w-4xl text-white z-10 flex flex-col items-center gap-6">
             <h2 className="text-3xl md:text-5xl font-bold gloria tracking-wide text-shadow-md">

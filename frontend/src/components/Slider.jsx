@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Pets from "../assets/images/pets.png";
 import PetOwner1 from "../assets/images/pet-owner-1.png";
 import Volunteer1 from "../assets/images/volunteer-1.png";
@@ -12,6 +13,14 @@ import { useSlide } from "../contexts/SlideContext";
 
 function Slider() {
   const { setCurrentSlideIndex } = useSlide();
+  const navigate = useNavigate();
+
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   const slides = [
     // Slide 1
@@ -56,7 +65,10 @@ function Slider() {
               Bring home a friend who'll love you furever —<br /> no conditions,
               just paws and love.
             </p>
-            <button className="text-lg font-medium px-6 py-2 bg-[hsl(173,100%,31%)] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-lg">
+            <button
+              onClick={() => scrollToSection("pet-list-section")}
+              className="text-lg font-medium px-6 py-2 bg-[hsl(173,100%,31%)] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-lg"
+            >
               Learn More
             </button>
           </div>
@@ -111,7 +123,10 @@ function Slider() {
               Being a Super Owner isn’t about perfection — <br />
               it’s about love and the willingness to learn.
             </p>
-            <button className="px-6 py-2 bg-[hsl(173,100%,31%)] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-lg max-w-xl">
+            <button
+              onClick={() => navigate("/article")}
+              className="px-6 py-2 bg-[hsl(173,100%,31%)] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-lg max-w-xl"
+            >
               Learn More
             </button>
           </div>
@@ -157,7 +172,10 @@ function Slider() {
               Be part of the pawty! Come and join through volunteer or support
               at our upcoming paw-some events!
             </p>
-            <button className="px-6 py-2 bg-[hsl(173,100%,31%)] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-lg max-w-10/11">
+            <button
+              onClick={() => scrollToSection("hero-section")}
+              className="px-6 py-2 bg-[hsl(173,100%,31%)] hover:bg-amber-800 hover:transition-all duration-300 ease-in-out text-white rounded-3xl shadow-lg max-w-10/11"
+            >
               Learn More
             </button>
           </div>

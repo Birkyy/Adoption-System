@@ -1,7 +1,7 @@
 const CardButton = ({ contents, activeCategory, onCategoryChange }) => {
   return (
     <>
-      <div className="flex flex-row justify-center items-center min-w-60/100 relative z-10">
+      <div className="flex flex-wrap items-center justify-center gap-10 md:gap-14">
         {contents.map((content) => {
           const IconComponent = content.image;
           const isActive = activeCategory === content.title;
@@ -10,7 +10,7 @@ const CardButton = ({ contents, activeCategory, onCategoryChange }) => {
             <button
               key={content.id}
               onClick={() => onCategoryChange(content.title)}
-              className={`rounded-xl overflow-hidden flex-1 transition-all duration-300 pt-4 pb-2 md:py-3`}
+              className={`rounded-xl flex-1 transition-all duration-300 pt-4 pb-2 md:py-3`}
             >
               <div className="flex flex-col md:flex-row gap-1 md:gap-4 items-center justify-center text-[hsl(228,14%,50%)] hover:text-[#bc9da7] transition-all duration-500 ease-in-out">
                 <IconComponent

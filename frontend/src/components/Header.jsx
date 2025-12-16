@@ -10,11 +10,18 @@ function Header({ overlay = false }) {
 
   // Logic: We want a solid background and dark text for these specific pages
   // instead of the transparent white text used on the Home slider.
-  const isAlternatePage = ["/partner", "/adopt"].includes(location.pathname);
+  const isAlternatePage = [
+    "/partner",
+    "/adopt",
+    "/event",
+    "/volunteer",
+  ].includes(location.pathname);
+
+  const isArticlePage = ["/article"].includes(location.pathname);
 
   // --- Color Logic ---
   const getTextColor = () => {
-    if (isAlternatePage) return "text-slate-800";
+    if (isAlternatePage) return "text-white";
 
     // Home Page Slider Logic
     switch (currentSlideIndex) {
@@ -23,7 +30,7 @@ function Header({ overlay = false }) {
       case 2:
         return "text-white";
       default:
-        return "text-black";
+        return "text-white";
     }
   };
 
@@ -44,7 +51,7 @@ function Header({ overlay = false }) {
 
   const getBackgroundColor = () => {
     // Matches the warm/light background of your content pages
-    if (isAlternatePage) return "bg-amber-50 shadow-sm";
+    if (isAlternatePage) return "bg-[#d5a07d]";
     return "bg-transparent";
   };
 
@@ -67,7 +74,7 @@ function Header({ overlay = false }) {
             to="/"
             className={`block px-4 py-2 cursor-pointer ${hoverColor}`}
           >
-            Home
+            FurEver
           </NavLink>
         </li>
 

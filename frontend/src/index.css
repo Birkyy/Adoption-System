@@ -86,7 +86,7 @@ ol.adopt-list li:last-child {
 
 /* Custom markers */
 ol.adopt-list li::marker {
-	--image: '📩 ';
+	--image: ' 🔍 ';
 	content: counter(list-item) ' ' var(--image);
 }
 
@@ -95,14 +95,14 @@ ol.adopt-list li:nth-child(2)::marker {
 }
 
 ol.adopt-list li:nth-child(3)::marker {
-	--image: '🗑 ';
+	--image: '📝 ';
 }
 
 ol.adopt-list li:nth-child(4)::marker {
-	--image: '🪴 ';
+	--image: '⏰ ';
 }
 
 ol.adopt-list li:nth-child(5)::marker {
-	--image: '🔑 ';
+	--image: '🎉 ';
 }
 

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import AdoptionForm from "./pages/AdoptionForm";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
@@ -9,7 +10,6 @@ import Surrender from "./pages/Surrender";
 import Article from "./pages/Article";
 import Event from "./pages/Event";
 import Volunteer from "./pages/Volunteer";
-import Map from "./pages/Map";
 import PetDetail from "./pages/PetDetail";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -21,6 +21,7 @@ import ArticleDetail from "./pages/ArticleDetail";
 function App() {
   return (
     <>
+      <Toaster position="top-right" />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>

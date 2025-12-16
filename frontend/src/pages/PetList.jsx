@@ -88,9 +88,9 @@ export default function PetList() {
   };
 
   return (
-    <div className="min-h-screen bg-amber-50 pb-8 px-4">
+    <div className="min-h-screen bg-[#d5a07d] pb-8 px-4">
       {/* Main Container */}
-      <div className="flex flex-col lg:flex-row bg-white min-h-screen max-w-7xl mx-auto border-1 rounded-md border-gray-200 shadow-sm">
+      <div className="flex flex-col lg:flex-row bg-gray-200 min-h-screen max-w-7xl mx-auto border-1 rounded-md border-gray-200 shadow-sm">
         {/* --- SIDEBAR FILTERS --- */}
         <div className="w-full lg:w-[280px] shrink-0 py-6 border-r border-gray-100">
           <div className="flex items-center border-b border-gray-200 pb-4 px-6">
@@ -183,9 +183,7 @@ export default function PetList() {
 
             {/* 4. AGE FILTER (Replaces Discount) */}
             <div className="p-6">
-              <h6 className="text-slate-900 text-sm font-bold mb-2">
-                Age (Years)
-              </h6>
+              <h6 className="text-slate-900 text-sm font-bold mb-2">Age</h6>
               <input
                 type="number"
                 min="0"
@@ -202,7 +200,7 @@ export default function PetList() {
         </div>
 
         {/* --- MAIN CONTENT: PET GRID --- */}
-        <div className="flex-1 p-6 bg-gray-50">
+        <div className="flex-1 p-6 bg-gray-100">
           {/* Top Search Bar */}
           <div className="mb-6">
             <input

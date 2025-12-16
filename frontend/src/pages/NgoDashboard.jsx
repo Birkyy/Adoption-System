@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import mammoth from "mammoth";
 
 import {
@@ -39,15 +39,21 @@ import {
 } from "../API/VolunteerAPI";
 
 export default function NgoDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && user.userRole !== "NGO") {
+    if (!loading && (!user || user.userRole !== "NGO")) {
+      // Only redirect once loading is finished
       toast.error("Access Denied: NGO Area Only");
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
+
+  // 3. BLOCK RENDER: If loading OR not authorized, show nothing (or spinner)
+  if (loading || !user || user.userRole !== "NGO") {
+    return null; // This prevents the "flash" of content
+  }
 
   const handleLogout = () => {
     logout();
@@ -59,7 +65,6 @@ export default function NgoDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800 fredoka">
-      <Toaster position="top-right" />
       <header className="bg-white shadow-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -69,7 +74,7 @@ export default function NgoDashboard() {
             </span>
           </div>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="text-red-600 font-medium text-sm px-4 py-2 bg-red-50 rounded-lg"
           >
             Logout
@@ -585,6 +590,18 @@ function EventsManager({ user }) {
     document.body.removeChild(link);
   };
 
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete event?")) return;
+    try {
+      await deleteEvent(id); // Now the import is used!
+      toast.success("Event deleted");
+      getMyEvents(user.id).then(setMyEvents);
+    } catch (err) {
+      toast.error("Failed");
+    }
+  };
+
   return (
     <div>
       {/* Sub-Navigation Header */}
@@ -719,6 +736,7 @@ function EventsManager({ user }) {
                 onClick={() => navigate(`/event/${ev.id}`)}
                 className="border p-4 rounded-lg flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
               >
+                {/* LEFT SIDE: Image & Text Info */}
                 <div className="flex gap-4 items-center">
                   {ev.imageUrl ? (
                     <img
@@ -758,17 +776,29 @@ function EventsManager({ user }) {
                     </div>
                   </div>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    ev.status === "Approved"
-                      ? "bg-green-100 text-green-800"
-                      : ev.status === "Completed"
-                      ? "bg-gray-100 text-gray-600"
-                      : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {ev.status === "Approved" ? "Active" : ev.status}
-                </span>
+
+                {/* RIGHT SIDE: Status & Delete Action Grouped */}
+                <div className="flex flex-col items-end gap-2 md:flex-row md:items-center md:gap-4">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      ev.status === "Approved"
+                        ? "bg-green-100 text-green-800"
+                        : ev.status === "Completed"
+                        ? "bg-gray-100 text-gray-600"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {ev.status === "Approved" ? "Active" : ev.status}
+                  </span>
+
+                  <button
+                    onClick={(e) => handleDelete(e, ev.id)}
+                    className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors z-10"
+                    title="Delete Event"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
             {myEvents.length === 0 && !showForm && (

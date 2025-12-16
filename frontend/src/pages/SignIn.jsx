@@ -5,9 +5,6 @@ import { useAuth } from "../contexts/AuthContext"; // <--- 1. Import the Hook
 import Dog from "../assets/images/welcoming-dog.png";
 import Food from "../assets/images/pet-food.png";
 
-// Import Toast
-import toast, { Toaster } from "react-hot-toast";
-
 function SignIn() {
   const navigate = useNavigate();
 
@@ -45,10 +42,13 @@ function SignIn() {
 
     try {
       const userData = await loginUser(email, password);
-      login(userData, rememberMe);
 
+      // 🟢 FIX: Dismiss and Show Success FIRST (Before redirecting)
       toast.dismiss(loadingToast);
       toast.success(`Welcome back, ${userData.name}!`);
+
+      // 🔴 THIS triggers the redirect (keep it last)
+      login(userData, rememberMe);
     } catch (err) {
       toast.dismiss(loadingToast);
       toast.error("Invalid email or password.");
@@ -58,9 +58,6 @@ function SignIn() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 relative overflow-hidden">
-      {/* TOASTER COMPONENT */}
-      <Toaster position="top-center" reverseOrder={false} />
-
       <div className="py-5 max-lg:px-12 lg:(pl-25 pr-15)">
         <div className="grid lg:grid-cols-2 items-center justify-center max-w-6xl w-full relative z-10 shadow-2xl rounded-2xl">
           {/* LEFT COLUMN: FORM */}

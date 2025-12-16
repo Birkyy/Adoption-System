@@ -42,7 +42,7 @@ namespace backend.Controllers
         [HttpGet("star-talent/{ngoId}")]
         public async Task<IActionResult> GetStarTalent(string ngoId)
         {
-            // 1. Fetch Data using Services (Not direct collection access)
+            // 1. Fetch Data using Services
             var events = await _eventService.GetByNgoIdAsync(ngoId);
             var listings = await _volunteerService.GetByNgoIdAsync(ngoId);
 
@@ -56,6 +56,10 @@ namespace backend.Controllers
                     continue;
                 foreach (var userId in ev.ParticipantIds)
                 {
+                    // 🟢 FIX: Skip if the participant is the NGO itself
+                    if (userId == ngoId)
+                        continue;
+
                     if (!scores.ContainsKey(userId))
                         scores[userId] = 0;
                     scores[userId]++;
@@ -69,6 +73,10 @@ namespace backend.Controllers
                     continue;
                 foreach (var userId in vol.ApplicantIds)
                 {
+                    // 🟢 FIX: Skip if the applicant is the NGO itself (Just in case)
+                    if (userId == ngoId)
+                        continue;
+
                     if (!scores.ContainsKey(userId))
                         scores[userId] = 0;
                     scores[userId]++;
@@ -85,7 +93,7 @@ namespace backend.Controllers
             if (!topUserIds.Any())
                 return Ok(new List<object>());
 
-            // 4. Fetch User Details using UserService
+            // 4. Fetch User Details
             var topUsers = await _userService.GetUsersByIdsAsync(topUserIds);
 
             // 5. Combine & Return
@@ -96,7 +104,7 @@ namespace backend.Controllers
                     Name = u.Name ?? u.Username ?? "Unknown",
                     u.Email,
                     u.ContactInfo,
-                    Score = scores[u.Id], // Map score back to user
+                    Score = scores[u.Id],
                 })
                 .OrderByDescending(x => x.Score)
                 .ToList();
