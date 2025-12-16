@@ -6,9 +6,14 @@ export const createPet = async (petData) => {
   return response.data;
 };
 
-export const getAllPets = async () => {
-  const response = await api.get("/Pets");
-  return response.data;
+export const getAllPets = async (params = {}) => {
+  try {
+    // This allows us to ask for { pageSize: 100 }
+    const response = await api.get("/Pets", { params });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 export const deletePet = async (petId, currentUserId) => {

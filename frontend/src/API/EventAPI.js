@@ -1,8 +1,10 @@
 import api from "./axiosInstance";
 
-export const getPublicEvents = async () => {
+// UPDATED: Accepts params for Pagination & Filtering
+export const getPublicEvents = async (params = {}) => {
   try {
-    const response = await api.get("/Events");
+    // Axios allows passing query parameters in the 2nd argument object
+    const response = await api.get("/Events", { params });
     return response.data;
   } catch (error) {
     throw error;

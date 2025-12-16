@@ -1,5 +1,7 @@
+using System.Security.Claims; // Required for reading Token
 using backend.Models.Domain;
 using backend.Services;
+using Microsoft.AspNetCore.Authorization; // Required for security
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -17,20 +19,45 @@ namespace backend.Controllers
             _userService = userService;
         }
 
-        // ... (Keep GetPublicArticles, GetMyArticles, GetById, Create, Update, Delete) ...
+        // 1. GET PUBLIC ARTICLES (Paginated)
         [HttpGet]
-        public async Task<ActionResult<List<Article>>> GetPublicArticles()
+        public async Task<ActionResult<object>> GetPublicArticles(
+            [FromQuery] string? search,
+            [FromQuery] string? category,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 6
+        )
         {
-            var articles = await _articleService.GetPublishedAsync();
-            return Ok(articles);
+            var (articles, total) = await _articleService.GetPublishedAsync(
+                search,
+                category,
+                page,
+                pageSize
+            );
+
+            return Ok(
+                new
+                {
+                    TotalCount = total,
+                    TotalPages = (int)Math.Ceiling((double)total / pageSize),
+                    Page = page,
+                    PageSize = pageSize,
+                    Data = articles,
+                }
+            );
         }
 
+        // 2. GET MY ARTICLES (Secure)
         [HttpGet("my-articles")]
-        public async Task<ActionResult<List<Article>>> GetMyArticles([FromQuery] string authorId)
+        [Authorize] // Requires Login
+        public async Task<ActionResult<List<Article>>> GetMyArticles()
         {
-            if (string.IsNullOrEmpty(authorId))
-                return BadRequest("AuthorId is required.");
-            var articles = await _articleService.GetByAuthorIdAsync(authorId);
+            // Security: Get ID from Token, NOT query param
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var articles = await _articleService.GetByAuthorIdAsync(userId);
             return Ok(articles);
         }
 
@@ -39,63 +66,74 @@ namespace backend.Controllers
         {
             var article = await _articleService.GetByIdAsync(id);
             if (article is null)
-                return NotFound($"Article with Id {id} not found.");
+                return NotFound($"Article not found.");
             return Ok(article);
         }
 
+        // 3. CREATE (Secure)
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> Create(Article newArticle)
         {
-            if (string.IsNullOrEmpty(newArticle.AuthorId))
-                return BadRequest("AuthorId is required.");
-            var author = await _userService.GetByIdAsync(newArticle.AuthorId);
-            if (author == null)
-                return BadRequest("User not found.");
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
 
+            // Force AuthorId to match the logged-in user
+            newArticle.AuthorId = userId;
             newArticle.Status = "Pending";
-            newArticle.PublishDate = DateTime.UtcNow;
 
             await _articleService.CreateAsync(newArticle);
             return CreatedAtAction(nameof(GetById), new { id = newArticle.ArticleId }, newArticle);
         }
 
+        // 4. UPDATE (Secure - Owner Only)
         [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> Update(
-            string id,
-            Article updatedArticle,
-            [FromQuery] string currentUserId
-        )
+        [Authorize]
+        public async Task<IActionResult> Update(string id, Article updatedArticle)
         {
             var existingArticle = await _articleService.GetByIdAsync(id);
             if (existingArticle is null)
-                return NotFound($"Article not found.");
+                return NotFound();
 
-            if (string.IsNullOrEmpty(currentUserId) || existingArticle.AuthorId != currentUserId)
-                return StatusCode(403, "Access Denied: You are not the author.");
-
-            updatedArticle.ArticleId = existingArticle.ArticleId;
-            updatedArticle.AuthorId = existingArticle.AuthorId;
-            updatedArticle.Status = existingArticle.Status;
+            // Security Check
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (existingArticle.AuthorId != userId)
+            {
+                return StatusCode(403, "Access Denied: You do not own this article.");
+            }
 
             await _articleService.UpdateArticleAsync(id, updatedArticle);
             return Ok("Article updated successfully.");
         }
 
+        // 5. DELETE (Secure - Owner Only)
         [HttpDelete("{id:length(24)}")]
-        public async Task<IActionResult> Delete(string id, [FromQuery] string currentUserId)
+        [Authorize]
+        public async Task<IActionResult> Delete(string id)
         {
             var existingArticle = await _articleService.GetByIdAsync(id);
             if (existingArticle is null)
-                return NotFound($"Article not found.");
+                return NotFound();
 
-            if (string.IsNullOrEmpty(currentUserId) || existingArticle.AuthorId != currentUserId)
+            // Security Check
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            // Allow Admin to delete ANY article, Author only their own
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            if (existingArticle.AuthorId != userId && userRole != "Admin")
+            {
                 return StatusCode(403, "Access Denied.");
+            }
 
             await _articleService.RemoveAsync(id);
             return Ok($"Article deleted.");
         }
 
+        // --- ADMIN ENDPOINTS (Protected) ---
+
         [HttpGet("admin/pending")]
+        [Authorize(Roles = "Admin")] // <--- Guard
         public async Task<ActionResult<List<Article>>> GetPendingArticles()
         {
             var articles = await _articleService.GetByStatusAsync("Pending");
@@ -103,24 +141,22 @@ namespace backend.Controllers
         }
 
         [HttpGet("admin/all")]
+        [Authorize(Roles = "Admin")] // <--- Guard
         public async Task<ActionResult<List<Article>>> GetAllArticles()
         {
             var articles = await _articleService.GetAllAsync();
             return Ok(articles);
         }
 
-        // --- FIXED ENDPOINT ---
         [HttpPut("admin/status/{id}")]
+        [Authorize(Roles = "Admin")] // <--- Guard
         public async Task<IActionResult> UpdateStatus(string id, [FromQuery] string status)
         {
             var article = await _articleService.GetByIdAsync(id);
             if (article == null)
                 return NotFound();
 
-            // FIX: Use UpdateStatusAsync instead of UpdateArticleAsync
-            // UpdateArticleAsync strictly updates Title/Content and ignores Status changes.
             await _articleService.UpdateStatusAsync(id, status);
-
             return Ok($"Article status updated to {status}");
         }
     }

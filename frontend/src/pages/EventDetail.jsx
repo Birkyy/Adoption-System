@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getEventById, joinEvent, updateEvent } from "../API/EventAPI"; // Import updateEvent
-import { getUserById } from "../API/ProfileAPI";
+import { getEventById, joinEvent, updateEvent } from "../API/EventAPI";
+import { getPublicProfile } from "../API/ProfileAPI"; // <--- Updated Import
 import { useAuth } from "../contexts/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 const FALLBACK_IMAGE =
   "https://placehold.co/1200x600/e2e8f0/475569?text=Event+Image&font=montserrat";
@@ -34,18 +34,19 @@ export default function EventDetail() {
       setEditForm({
         title: data.title,
         description: data.description,
-        eventDate: data.eventDate, // format might need tweaking for input type=datetime-local
+        eventDate: data.eventDate,
         location: data.location,
         imageUrl: data.imageUrl,
       });
 
+      // Get Organizer Details (Safely)
       const organizerId = data.createdById;
       if (organizerId) {
         try {
-          const organizerData = await getUserById(organizerId);
+          const organizerData = await getPublicProfile(organizerId);
           setOrganizer(organizerData);
         } catch (err) {
-          console.warn("Organizer info missing");
+          console.warn("Organizer info missing or private");
         }
       }
     } catch (error) {
@@ -113,8 +114,6 @@ export default function EventDetail() {
 
   return (
     <div className="min-h-screen bg-[#d5a07d] pb-12 fredoka">
-      <Toaster position="top-right" />
-
       {/* HEADER / HERO */}
       <div className="w-full h-64 md:h-96 bg-gray-200 relative">
         <img

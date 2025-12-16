@@ -31,3 +31,12 @@ export const updateUser = async (userId, userData) => {
     throw error;
   }
 };
+
+export const getPublicProfile = async (id) => {
+  try {
+    const response = await api.get(`/Users/public-profile/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

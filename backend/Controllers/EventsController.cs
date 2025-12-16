@@ -20,10 +20,33 @@ namespace backend.Controllers
         // ... (Keep existing GetPublicEvents, GetById, Create, ApproveEvent, UpdateDetails, JoinEvent, Delete, GetPending, GetMy) ...
 
         [HttpGet]
-        public async Task<ActionResult<List<Event>>> GetPublicEvents()
+        [HttpGet]
+        public async Task<ActionResult<object>> GetPublicEvents(
+            [FromQuery] string? search,
+            [FromQuery] string? location,
+            [FromQuery] string? date,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 6
+        )
         {
-            var events = await _eventService.GetApprovedAsync();
-            return Ok(events);
+            var (events, total) = await _eventService.GetApprovedAsync(
+                search,
+                location,
+                date,
+                page,
+                pageSize
+            );
+
+            return Ok(
+                new
+                {
+                    TotalCount = total,
+                    TotalPages = (int)Math.Ceiling((double)total / pageSize),
+                    Page = page,
+                    PageSize = pageSize,
+                    Data = events,
+                }
+            );
         }
 
         [HttpGet("{id:length(24)}")]

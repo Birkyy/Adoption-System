@@ -11,11 +11,11 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   LineChart,
   Line,
 } from "recharts";
+
 import {
   createPet,
   getAllPets,
@@ -30,6 +30,7 @@ import {
   createArticle,
   deleteEvent,
 } from "../API/NgoAPI";
+
 import {
   getMyVolunteerListings,
   createVolunteerListing,
@@ -38,21 +39,21 @@ import {
   getStarTalent,
 } from "../API/VolunteerAPI";
 
+import { getUserById } from "../API/ProfileAPI";
+
 export default function NgoDashboard() {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && (!user || user.userRole !== "NGO")) {
-      // Only redirect once loading is finished
       toast.error("Access Denied: NGO Area Only");
       navigate("/");
     }
   }, [user, loading, navigate]);
 
-  // 3. BLOCK RENDER: If loading OR not authorized, show nothing (or spinner)
   if (loading || !user || user.userRole !== "NGO") {
-    return null; // This prevents the "flash" of content
+    return null;
   }
 
   const handleLogout = () => {
@@ -104,7 +105,6 @@ export default function NgoDashboard() {
             isActive={activeTab === "articles"}
             onClick={() => setActiveTab("articles")}
           />
-          {/* NEW TAB */}
           <TabButton
             label="Volunteers"
             isActive={activeTab === "volunteers"}
@@ -142,7 +142,7 @@ function SectionHeader({ title, actionButton }) {
 
 // --- 1. PETS MANAGER ---
 function PetsManager({ user }) {
-  const navigate = useNavigate(); // 1. Hook for navigation
+  const navigate = useNavigate();
   const [pets, setPets] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [newPet, setNewPet] = useState({
@@ -158,11 +158,37 @@ function PetsManager({ user }) {
 
   const fetchPets = async () => {
     try {
-      const allPets = await getAllPets();
+      // 1. Fetch a large batch to ensure we find this NGO's pets
+      // (Ideally, backend should have a GetMyPets endpoint, but this works for now)
+      const response = await getAllPets({ pageSize: 100 });
+
+      console.log("DEBUG: Raw API Response:", response); // 🔍 Check console
+
+      let allPets = [];
+
+      // 2. Unwrap Data
+      const body = response && response.data ? response.data : response;
+
+      if (body?.Data || body?.data) {
+        allPets = body.Data || body.data || [];
+      } else if (Array.isArray(body)) {
+        allPets = body;
+      } else {
+        allPets = [];
+      }
+
+      console.log("DEBUG: All Pets Found:", allPets.length); // 🔍
+
+      // 3. Filter: strict check on ID
       const myPets = allPets.filter((p) => p.ngoId === user.id);
+
+      console.log("DEBUG: My User ID:", user.id); // 🔍
+      console.log("DEBUG: Matches Found:", myPets.length); // 🔍
+
       setPets(myPets);
     } catch (error) {
       console.error(error);
+      toast.error("Failed to load pets.");
     }
   };
 
@@ -223,7 +249,7 @@ function PetsManager({ user }) {
       await createPet(payload);
       toast.success("Pet listed successfully!");
       setShowForm(false);
-      fetchPets();
+      fetchPets(); // Refresh list
       setNewPet({
         name: "",
         species: "Dog",
@@ -240,7 +266,7 @@ function PetsManager({ user }) {
   };
 
   const handleDelete = async (e, id) => {
-    e.stopPropagation(); // 2. Stop click from navigating to detail page
+    e.stopPropagation();
     if (!window.confirm("Delete this listing?")) return;
     try {
       await deletePet(id, user.id);
@@ -313,7 +339,6 @@ function PetsManager({ user }) {
             <option value="Female">Female</option>
           </select>
 
-          {/* MULTI-PHOTO UPLOAD */}
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-600 mb-2">
               Pet Photos (Select multiple)
@@ -375,9 +400,8 @@ function PetsManager({ user }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {pets.map((pet) => (
           <div
-            key={pet.petId}
-            // 3. Make card clickable to navigate
-            onClick={() => navigate(`/pet/${pet.petId}`)}
+            key={pet.petId || pet.id}
+            onClick={() => navigate(`/pet/${pet.petId || pet.id}`)}
             className="border rounded-lg p-4 flex flex-col gap-2 bg-white shadow-sm relative cursor-pointer hover:shadow-md transition-shadow group"
           >
             <img
@@ -414,7 +438,7 @@ function PetsManager({ user }) {
                 {pet.status}
               </span>
               <button
-                onClick={(e) => handleDelete(e, pet.petId)}
+                onClick={(e) => handleDelete(e, pet.petId || pet.id)}
                 className="text-red-600 text-sm hover:underline z-10"
               >
                 Remove
@@ -423,9 +447,12 @@ function PetsManager({ user }) {
           </div>
         ))}
         {pets.length === 0 && !showForm && (
-          <p className="col-span-full text-center text-gray-500 py-10">
-            No pets listed yet.
-          </p>
+          <div className="col-span-full text-center py-10">
+            <p className="text-gray-500 text-lg">No pets found.</p>
+            <p className="text-xs text-gray-400 mt-2">
+              (Checked user ID: {user.id})
+            </p>
+          </div>
         )}
       </div>
     </div>
@@ -455,45 +482,35 @@ function AdoptionsManager({ user }) {
   return (
     <div>
       <SectionHeader title="Adoption Applications" actionButton={null} />
-
       <div className="space-y-4">
         {apps.map((app) => (
           <div
             key={app.applicationId}
-            className="border rounded-lg p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white"
+            className="border rounded-lg p-4 flex flex-col md:flex-row justify-between bg-white"
           >
+            {/* ... UI for Adoption App ... */}
             <div>
               <h3 className="font-bold text-indigo-900">Pet ID: {app.petId}</h3>
-              <p className="text-sm text-gray-600">
-                Applicant ID: {app.applicantId}
-              </p>
-              <p className="text-sm mt-1 bg-gray-50 p-2 rounded">
+              <p className="text-sm">Applicant: {app.applicantId}</p>
+              <p className="text-sm bg-gray-50 p-2 rounded mt-1">
                 "{app.message}"
               </p>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  app.status === "Pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : app.status === "Approved"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
+            <div className="flex flex-col gap-2 items-end">
+              <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded">
                 {app.status}
               </span>
               {app.status === "Pending" && (
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleStatus(app.applicationId, "Approved")}
-                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                    className="text-xs bg-green-600 text-white px-3 py-1 rounded"
                   >
                     Approve
                   </button>
                   <button
                     onClick={() => handleStatus(app.applicationId, "Rejected")}
-                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                    className="text-xs bg-red-600 text-white px-3 py-1 rounded"
                   >
                     Reject
                   </button>
@@ -503,9 +520,7 @@ function AdoptionsManager({ user }) {
           </div>
         ))}
         {apps.length === 0 && (
-          <p className="text-center text-gray-500 py-10">
-            No applications received yet.
-          </p>
+          <p className="text-center text-gray-500 py-10">No applications.</p>
         )}
       </div>
     </div>
@@ -514,13 +529,12 @@ function AdoptionsManager({ user }) {
 
 // --- 3. EVENTS MANAGER ---
 function EventsManager({ user }) {
-  const navigate = useNavigate(); // 1. Initialize navigation hook
+  const navigate = useNavigate();
   const [subTab, setSubTab] = useState("my_events");
   const [myEvents, setMyEvents] = useState([]);
   const [proposals, setProposals] = useState([]);
   const [showForm, setShowForm] = useState(false);
 
-  // Initialize state with empty strings to avoid uncontrolled input warnings
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -555,8 +569,6 @@ function EventsManager({ user }) {
     try {
       await createEvent({ ...newEvent, createdById: user.id });
       toast.success("Event created successfully!");
-
-      // Reset and Refresh
       setShowForm(false);
       setNewEvent({
         title: "",
@@ -594,7 +606,7 @@ function EventsManager({ user }) {
     e.stopPropagation();
     if (!window.confirm("Delete event?")) return;
     try {
-      await deleteEvent(id); // Now the import is used!
+      await deleteEvent(id);
       toast.success("Event deleted");
       getMyEvents(user.id).then(setMyEvents);
     } catch (err) {
@@ -604,13 +616,12 @@ function EventsManager({ user }) {
 
   return (
     <div>
-      {/* Sub-Navigation Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 min-h-[40px] gap-4 border-b border-gray-100 pb-4">
         <div className="flex gap-4">
           <button
             onClick={() => {
               setSubTab("my_events");
-              setShowForm(false); // Close form if switching tabs
+              setShowForm(false);
             }}
             className={`text-xl font-bold transition-colors ${
               subTab === "my_events"
@@ -633,7 +644,6 @@ function EventsManager({ user }) {
           </button>
         </div>
 
-        {/* Action Button - Only visible on My Events tab */}
         {subTab === "my_events" && (
           <button
             onClick={() => setShowForm(!showForm)}
@@ -648,10 +658,8 @@ function EventsManager({ user }) {
         )}
       </div>
 
-      {/* CONTENT: MY EVENTS */}
       {subTab === "my_events" && (
         <div className="space-y-6">
-          {/* Create Event Form - Conditionally Rendered */}
           {showForm && (
             <div className="bg-gray-50 p-6 rounded-xl border border-indigo-100 shadow-inner animate-fadeIn">
               <h3 className="text-lg font-bold text-slate-700 mb-4">
@@ -688,7 +696,6 @@ function EventsManager({ user }) {
                   />
                 </div>
 
-                {/* File Upload */}
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-semibold text-gray-600">
                     Event Cover Image
@@ -727,16 +734,13 @@ function EventsManager({ user }) {
             </div>
           )}
 
-          {/* List of Existing Events */}
           <div className="grid gap-4">
             {myEvents.map((ev) => (
               <div
                 key={ev.id}
-                // 2. CLICKABLE: Navigate to Event Detail
                 onClick={() => navigate(`/event/${ev.id}`)}
                 className="border p-4 rounded-lg flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
               >
-                {/* LEFT SIDE: Image & Text Info */}
                 <div className="flex gap-4 items-center">
                   {ev.imageUrl ? (
                     <img
@@ -758,6 +762,7 @@ function EventsManager({ user }) {
                       {ev.location}
                     </p>
                     <div className="flex items-center gap-1 text-xs text-indigo-600 font-medium mt-1">
+                      {/* Fixed SVG Props */}
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-4 w-4"
@@ -777,7 +782,6 @@ function EventsManager({ user }) {
                   </div>
                 </div>
 
-                {/* RIGHT SIDE: Status & Delete Action Grouped */}
                 <div className="flex flex-col items-end gap-2 md:flex-row md:items-center md:gap-4">
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${
@@ -813,7 +817,6 @@ function EventsManager({ user }) {
         </div>
       )}
 
-      {/* CONTENT: PROPOSALS */}
       {subTab === "proposals" && (
         <div className="space-y-4">
           {proposals.map((prop) => (
@@ -842,7 +845,6 @@ function EventsManager({ user }) {
                 {prop.description}
               </div>
 
-              {/* Documents Section */}
               {prop.proposalDocuments && prop.proposalDocuments.length > 0 && (
                 <div className="mb-4">
                   <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">
@@ -860,6 +862,7 @@ function EventsManager({ user }) {
                         }
                         className="flex items-center gap-2 bg-white border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-50 transition-colors font-medium"
                       >
+                        {/* Fixed SVG Props */}
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           className="h-4 w-4"
@@ -938,7 +941,7 @@ function ArticlesManager({ user }) {
     reader.readAsDataURL(file);
   };
 
-  // --- NEW: Handle DOCX Upload ---
+  // Handle DOCX Upload
   const handleDocUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1013,7 +1016,6 @@ function ArticlesManager({ user }) {
             }
           />
 
-          {/* COVER IMAGE UPLOAD */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-600">
               Cover Image
@@ -1033,7 +1035,6 @@ function ArticlesManager({ user }) {
             )}
           </div>
 
-          {/* --- DOCX IMPORT BUTTON --- */}
           <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
             <label className="block text-sm font-bold text-indigo-900 mb-1">
               Import from Word (.docx)
@@ -1121,7 +1122,6 @@ function VolunteerManager({ user }) {
     skillsRequired: "",
   });
 
-  // State for viewing applicants modal
   const [selectedListingId, setSelectedListingId] = useState(null);
   const [applicants, setApplicants] = useState([]);
 
@@ -1130,7 +1130,8 @@ function VolunteerManager({ user }) {
   }, [user.id]);
 
   const fetchListings = () => {
-    getMyVolunteerListings(user.id).then(setListings).catch(console.error);
+    // 🟢 FIX: Remove arguments from API call (security update)
+    getMyVolunteerListings().then(setListings).catch(console.error);
   };
 
   const handleCreate = async (e) => {
@@ -1154,7 +1155,8 @@ function VolunteerManager({ user }) {
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this listing?")) return;
     try {
-      await deleteVolunteerListing(id, user.id);
+      // 🟢 FIX: Remove arguments
+      await deleteVolunteerListing(id);
       toast.success("Removed.");
       fetchListings();
     } catch (error) {
@@ -1164,9 +1166,10 @@ function VolunteerManager({ user }) {
 
   const handleViewApplicants = async (listingId) => {
     setSelectedListingId(listingId);
-    setApplicants([]); // Clear previous
+    setApplicants([]);
     try {
-      const data = await getApplicants(listingId, user.id);
+      // 🟢 FIX: Remove arguments
+      const data = await getApplicants(listingId);
       setApplicants(data);
     } catch (error) {
       toast.error("Could not load applicants.");
@@ -1275,7 +1278,6 @@ function VolunteerManager({ user }) {
         )}
       </div>
 
-      {/* APPLICANTS MODAL */}
       {selectedListingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
@@ -1345,7 +1347,8 @@ function ReportsManager({ user }) {
         const [appsData, eventsData, volData] = await Promise.all([
           getNgoApplications(user.id),
           getMyEvents(user.id),
-          getMyVolunteerListings(user.id),
+          // 🟢 FIX: Remove argument
+          getMyVolunteerListings(),
         ]);
         setAdoptions(appsData);
         setEvents(eventsData);
@@ -1441,19 +1444,6 @@ function ReportsManager({ user }) {
       toast.error("Failed to load details");
       setDetailType(null);
     }
-  };
-
-  const handleShowEventDetails = () => {
-    // Just show the list of events first, user clicks specific event to see people
-    setDetailData(events);
-    setDetailType("events");
-  };
-
-  const handleShowVolunteerDetails = () => {
-    // Debugging: Check if volunteers has data
-    console.log("Volunteers Data:", volunteers);
-    setDetailData([...volunteers]); // Spread to create a new array reference
-    setDetailType("volunteers");
   };
 
   // --- Render Modal ---
@@ -1708,139 +1698,6 @@ function ReportsManager({ user }) {
   );
 }
 
-// --- SUB-COMPONENT: Fetch & Show Event Participants ---
-function EventParticipantsCard({ event, user }) {
-  const [participants, setParticipants] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-
-  // Filter NGO itself out
-  const realParticipantIds =
-    event.participantIds?.filter((id) => id !== user.id) || [];
-
-  const handleExpand = async () => {
-    if (expanded) {
-      setExpanded(false);
-      return;
-    }
-    setExpanded(true);
-    if (participants) return; // Already fetched
-
-    setLoading(true);
-    try {
-      const data = await Promise.all(
-        realParticipantIds.map((id) => getUserById(id))
-      );
-      setParticipants(data);
-    } catch (e) {
-      toast.error("Error loading participants");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="border rounded-lg bg-white overflow-hidden">
-      <div
-        className="p-4 flex justify-between items-center bg-gray-50 cursor-pointer"
-        onClick={handleExpand}
-      >
-        <div>
-          <h4 className="font-bold text-slate-800">{event.title}</h4>
-          <p className="text-xs text-gray-500">
-            {new Date(event.eventDate).toLocaleDateString()}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-indigo-600">
-            {realParticipantIds.length} Joined
-          </span>
-          <span className="text-gray-400">{expanded ? "▲" : "▼"}</span>
-        </div>
-      </div>
-      {expanded && (
-        <div className="p-4 border-t">
-          {loading ? (
-            <p className="text-sm text-gray-400">Loading...</p>
-          ) : participants && participants.length > 0 ? (
-            <ul className="space-y-2">
-              {participants.map((p) => (
-                <li key={p.id} className="flex justify-between text-sm">
-                  <span className="font-bold">{p.name || p.username}</span>
-                  <span className="text-gray-600">{p.email}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">
-              No external participants yet.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- SUB-COMPONENT: Fetch & Show Volunteer Applicants ---
-function VolunteerApplicantsCard({ listing, user }) {
-  const [apps, setApps] = useState(null);
-  const [expanded, setExpanded] = useState(false);
-
-  const handleExpand = async () => {
-    if (expanded) {
-      setExpanded(false);
-      return;
-    }
-    setExpanded(true);
-    if (apps) return;
-
-    try {
-      // Using existing API that fetches applicants for a listing
-      const data = await getApplicants(listing.id, user.id);
-      setApps(data);
-    } catch (e) {
-      toast.error("Error loading applicants");
-    }
-  };
-
-  return (
-    <div className="border rounded-lg bg-white overflow-hidden">
-      <div
-        className="p-4 flex justify-between items-center bg-gray-50 cursor-pointer"
-        onClick={handleExpand}
-      >
-        <div>
-          <h4 className="font-bold text-slate-800">{listing.title}</h4>
-          <p className="text-xs text-gray-500">{listing.location}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-amber-600">
-            {listing.applicantIds?.length || 0} Applied
-          </span>
-          <span className="text-gray-400">{expanded ? "▲" : "▼"}</span>
-        </div>
-      </div>
-      {expanded && (
-        <div className="p-4 border-t">
-          {apps && apps.length > 0 ? (
-            <ul className="space-y-3">
-              {apps.map((p) => (
-                <li key={p.id} className="text-sm border-b pb-2 last:border-0">
-                  <p className="font-bold">{p.name}</p>
-                  <p className="text-gray-600">📧 {p.email}</p>
-                  <p className="text-gray-600">📞 {p.contactInfo || "N/A"}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">No applicants yet.</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // --- NEW: STAR VOLUNTEER DISCOVERY TOOL ---
 function TalentDiscoveryTool({ user }) {
   const [topVolunteers, setTopVolunteers] = useState([]);
@@ -1850,8 +1707,8 @@ function TalentDiscoveryTool({ user }) {
     const fetchTalent = async () => {
       try {
         setLoading(true);
-        // 🟢 CALL THE NEW API
-        const data = await getStarTalent(user.id);
+        // 🟢 FIX: Call without args
+        const data = await getStarTalent();
         setTopVolunteers(data);
       } catch (error) {
         console.error(error);
@@ -1945,42 +1802,7 @@ function TalentDiscoveryTool({ user }) {
   );
 }
 
-// --- SUB-COMPONENT: USER CARD ---
-function TalentUserCard({ stats }) {
-  // Mock User Data (Replace with getUserById(stats.id) in real app)
-  // For demo, we just show generic data + stats
-  return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-start gap-3 hover:border-indigo-300 transition-colors">
-      <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-        {stats.count}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between">
-          <h5 className="font-bold text-slate-800">
-            User ID: {stats.id.substring(0, 5)}...
-          </h5>
-          <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">
-            Active
-          </span>
-        </div>
-        <p className="text-xs text-slate-500 mt-1 truncate">
-          Recent: {stats.sources[0]}
-        </p>
-        <div className="mt-3 flex gap-2">
-          {/* Fake Actions for Demo */}
-          <button className="text-xs bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded border border-slate-200 font-semibold">
-            Email
-          </button>
-          <button className="text-xs bg-slate-50 hover:bg-slate-100 px-3 py-1 rounded border border-slate-200 font-semibold">
-            Call
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- HELPER COMPONENTS ---
+// ... (Other Components: StatCard, TabButton remain same) ...
 function StatCard({ title, value, color, icon, textColor, onClick }) {
   return (
     <div

@@ -1,12 +1,14 @@
 import api from "./axiosInstance";
 
-export const getVolunteerListings = async () => {
-  const response = await api.get("/Volunteer");
+// UPDATED: Now accepts 'params' for Pagination & Search
+export const getVolunteerListings = async (params = {}) => {
+  const response = await api.get("/Volunteer", { params });
   return response.data;
 };
 
-export const getMyVolunteerListings = async (ngoId) => {
-  const response = await api.get(`/Volunteer/my-listings?ngoId=${ngoId}`);
+// SECURITY UPDATE: No arguments needed (ID comes from Token)
+export const getMyVolunteerListings = async () => {
+  const response = await api.get("/Volunteer/my-listings");
   return response.data;
 };
 
@@ -15,24 +17,28 @@ export const createVolunteerListing = async (data) => {
   return response.data;
 };
 
-export const applyForVolunteer = async (listingId, userId) => {
-  const response = await api.post(`/Volunteer/apply/${listingId}?userId=${userId}`);
+// SECURITY UPDATE: Removed userId arg
+export const applyForVolunteer = async (listingId) => {
+  const response = await api.post(`/Volunteer/apply/${listingId}`);
   return response.data;
 };
 
-export const deleteVolunteerListing = async (listingId, currentUserId) => {
-  const response = await api.delete(`/Volunteer/${listingId}?currentUserId=${currentUserId}`);
+// SECURITY UPDATE: Removed currentUserId arg
+export const deleteVolunteerListing = async (listingId) => {
+  const response = await api.delete(`/Volunteer/${listingId}`);
   return response.data;
 };
 
-export const getApplicants = async (listingId, currentUserId) => {
-  const response = await api.get(`/Volunteer/applicants/${listingId}?currentUserId=${currentUserId}`);
+// SECURITY UPDATE: Removed currentUserId arg
+export const getApplicants = async (listingId) => {
+  const response = await api.get(`/Volunteer/applicants/${listingId}`);
   return response.data;
 };
 
-export const getStarTalent = async (ngoId) => {
+// SECURITY UPDATE: Removed ngoId arg
+export const getStarTalent = async () => {
   try {
-    const response = await api.get(`/Volunteer/star-talent/${ngoId}`);
+    const response = await api.get("/Volunteer/star-talent");
     return response.data;
   } catch (error) {
     console.error("Failed to fetch star talent:", error);

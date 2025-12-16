@@ -4,17 +4,36 @@ import { getPublicArticles, createArticle } from "../API/ArticleAPI";
 import { useAuth } from "../contexts/AuthContext";
 import ArticleCard from "../components/ArticleCard";
 import LoadingScreen from "../components/LoadingScreen";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import mammoth from "mammoth";
+
+// Debounce Hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export default function Article() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // --- STATE ---
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 6;
+
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  // Removed Category State
+
+  const debouncedSearch = useDebounce(search, 500);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -24,32 +43,58 @@ export default function Article() {
     coverImageUrl: "",
   });
 
-  const categories = [
-    "All",
-    "Pet Care",
-    "Health",
-    "Training",
-    "Adoption Stories",
-  ];
-
+  // --- EFFECT: Fetch Data ---
   useEffect(() => {
-    fetchArticles();
-  }, []);
+    const fetchArticles = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          page,
+          pageSize,
+        };
 
-  const fetchArticles = async () => {
-    try {
-      const data = await getPublicArticles();
-      data.sort((a, b) => new Date(b.publishDate) - new Date(a.publishDate));
-      setArticles(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load articles.");
-    } finally {
-      setLoading(false);
+        if (debouncedSearch) params.search = debouncedSearch;
+        // Removed category param
+
+        const response = await getPublicArticles(params);
+
+        // Handle Tuple/Pagination Response
+        const body = response && response.data ? response.data : response;
+
+        if (body.Data || body.data) {
+          setArticles(body.Data || body.data || []);
+          setTotalPages(body.TotalPages || body.totalPages || 1);
+        } else if (Array.isArray(body)) {
+          setArticles(body);
+          setTotalPages(1);
+        } else {
+          setArticles([]);
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to load articles.");
+        setArticles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, [page, debouncedSearch]); // Removed category dependency
+
+  // --- HANDLERS ---
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  // --- HANDLERS ---
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    setPage(1);
+  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
@@ -107,23 +152,13 @@ export default function Article() {
     }
   };
 
-  const filteredArticles = articles.filter((article) => {
-    const matchesSearch =
-      article.title.toLowerCase().includes(search.toLowerCase()) ||
-      article.content.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = category === "All" ? true : true;
-    return matchesSearch && matchesCategory;
-  });
-
   return (
     <div className="min-h-screen bg-gray-50 fredoka pb-12">
-      <Toaster position="top-right" />
       {loading && <LoadingScreen />}
 
       {/* HERO SECTION */}
       <div className="bg-[#009e8c] pt-16 pb-32 px-4 text-center relative overflow-hidden">
         <div className="relative z-10 max-w-4xl mx-auto">
-          {/* 1. Title & Description (Restored) */}
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-4 font-gloria text-shadow-md">
             Furticle
           </h1>
@@ -132,7 +167,6 @@ export default function Article() {
             friends.
           </p>
 
-          {/* 2. Write Button (Restored) */}
           <button
             onClick={() =>
               user ? setShowModal(true) : toast.error("Login required")
@@ -142,14 +176,15 @@ export default function Article() {
             <span className="text-xl">✍️</span> Write an Article
           </button>
 
-          {/* 3. Search Bar (Restored) */}
+          {/* Search Bar */}
           <div className="relative max-w-xl mx-auto mb-8">
             <input
               type="text"
               placeholder="Search for articles..."
-              className="w-full py-4 pl-6 pr-14 rounded-full shadow-xl text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-teal-300/40 transition-all"
+              // Added bg-white
+              className="w-full py-4 pl-6 pr-14 rounded-full shadow-xl bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-teal-300/40 transition-all"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
             />
             <div className="absolute right-2 top-2 p-2 bg-[#009e8c] rounded-full text-white">
               <svg
@@ -169,22 +204,7 @@ export default function Article() {
             </div>
           </div>
 
-          {/* 4. Category Tabs (Restored) */}
-          <div className="flex flex-wrap justify-center gap-3">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`px-5 py-2 rounded-full font-bold text-sm transition-all transform hover:-translate-y-0.5 ${
-                  category === cat
-                    ? "bg-white text-[#009e8c] shadow-lg ring-2 ring-teal-200"
-                    : "bg-[#00897b] text-teal-50 hover:bg-[#00796b] shadow-md"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+          {/* Removed Category Tabs */}
         </div>
 
         {/* Decorative Elements */}
@@ -314,12 +334,13 @@ export default function Article() {
       {/* ARTICLES GRID */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredArticles.map((article) => (
-            <ArticleCard key={article.articleId} article={article} />
-          ))}
+          {!loading &&
+            articles.map((article) => (
+              <ArticleCard key={article.articleId} article={article} />
+            ))}
         </div>
 
-        {!loading && filteredArticles.length === 0 && (
+        {!loading && articles.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <div className="bg-white p-6 rounded-full shadow-md mb-4 text-6xl">
               🧐
@@ -328,17 +349,41 @@ export default function Article() {
               No articles found
             </h3>
             <p className="text-slate-500 max-w-md">
-              We couldn't find any articles matching "{search}". Try adjusting
-              your filters.
+              We couldn't find any articles matching "{search}".
             </p>
             <button
               onClick={() => {
                 setSearch("");
-                setCategory("All");
+                setPage(1);
               }}
               className="mt-6 text-[#009e8c] font-bold hover:underline"
             >
               Clear Filters
+            </button>
+          </div>
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        {!loading && articles.length > 0 && (
+          <div className="mt-12 flex justify-center items-center gap-4">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+
+            <span className="text-sm font-bold text-gray-600">
+              Page {page} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded-md bg-[#009e8c] text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
             </button>
           </div>
         )}

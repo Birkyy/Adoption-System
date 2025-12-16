@@ -2,21 +2,69 @@ import React, { useState, useEffect } from "react";
 import { getVolunteerListings, applyForVolunteer } from "../API/VolunteerAPI";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+
+// Debounce Hook
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export default function Volunteer() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // --- STATE ---
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 6;
+
+  // Search
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500);
+
+  // --- FETCH DATA ---
   useEffect(() => {
-    getVolunteerListings()
-      .then(setListings)
-      .catch(() => toast.error("Failed to load listings"))
-      .finally(() => setLoading(false));
-  }, []);
+    const fetchListings = async () => {
+      setLoading(true);
+      try {
+        const params = { page, pageSize };
+        if (debouncedSearch) params.search = debouncedSearch;
+
+        const response = await getVolunteerListings(params);
+
+        // Handle Tuple/Pagination Response
+        const body = response && response.data ? response.data : response;
+
+        if (body.Data || body.data) {
+          setListings(body.Data || body.data || []);
+          setTotalPages(body.TotalPages || body.totalPages || 1);
+        } else if (Array.isArray(body)) {
+          // Fallback
+          setListings(body);
+          setTotalPages(1);
+        } else {
+          setListings([]);
+        }
+      } catch (error) {
+        toast.error("Failed to load listings");
+        setListings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchListings();
+  }, [page, debouncedSearch]);
 
   const handleApply = async (id) => {
     if (!user) {
@@ -28,14 +76,28 @@ export default function Volunteer() {
     try {
       await applyForVolunteer(id, user.id);
       toast.success("Application sent! The NGO will contact you directly.");
+      // Refresh list to update button state
+      setListings((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, applicantIds: [...(item.applicantIds || []), user.id] }
+            : item
+        )
+      );
     } catch (error) {
       toast.error("Failed to apply or already applied.");
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 fredoka pb-12">
-      <Toaster position="top-right" />
       {loading && <LoadingScreen />}
 
       {/* Hero */}
@@ -43,13 +105,43 @@ export default function Volunteer() {
         <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 font-gloria">
           Become a Volunteer
         </h1>
-        <p className="text-teal-50 text-lg max-w-2xl mx-auto">
+        <p className="text-teal-50 text-lg max-w-2xl mx-auto mb-8">
           Lend a hand, change a paw-sitive life. Browse opportunities below and
           apply to help out at local shelters.
         </p>
+
+        {/* Search Bar */}
+        <div className="max-w-xl mx-auto relative">
+          <input
+            type="text"
+            placeholder="Search opportunities..."
+            className="w-full py-3 pl-5 pr-12 rounded-full shadow-lg text-slate-700 outline-none focus:ring-4 focus:ring-teal-300/40 transition-all"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+          <div className="absolute right-2 top-1.5 p-1.5 bg-[#00897b] rounded-full text-white">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 -mt-8">
+      <div className="max-w-5xl mx-auto px-4 -mt-8 relative z-10">
         <div className="grid gap-6">
           {listings.map((item) => (
             <div
@@ -91,11 +183,36 @@ export default function Volunteer() {
           ))}
 
           {!loading && listings.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl text-gray-500">
-              No volunteer opportunities available right now.
+            <div className="text-center py-12 bg-white rounded-xl text-gray-500 shadow-sm">
+              No volunteer opportunities found matching "{search}".
             </div>
           )}
         </div>
+
+        {/* PAGINATION CONTROLS */}
+        {!loading && listings.length > 0 && (
+          <div className="mt-8 flex justify-center items-center gap-4 pb-8">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Previous
+            </button>
+
+            <span className="text-sm font-bold text-gray-600">
+              Page {page} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded-md bg-[#009e8c] text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

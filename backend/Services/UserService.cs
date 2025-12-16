@@ -21,6 +21,14 @@ namespace backend.Services
             );
         }
 
+        // --- NEW: Required for Registration Checks ---
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _usersCollection.Find(u => u.Email == email).FirstOrDefaultAsync();
+        }
+
+        // --- Keep all your existing methods ---
+
         public async Task<List<User>> GetUsersByIdsAsync(List<string> userIds)
         {
             var filter = Builders<User>.Filter.In(u => u.Id, userIds);
@@ -35,7 +43,6 @@ namespace backend.Services
         public async Task<List<NGO>> GetAllNgosAsync()
         {
             var users = await _usersCollection.Find(u => u.UserRole == "NGO").ToListAsync();
-
             return users.OfType<NGO>().ToList();
         }
 
@@ -48,7 +55,6 @@ namespace backend.Services
         {
             newNgo.UserRole = "NGO";
             newNgo.Password = HashPassword(newNgo.Password);
-            // Ensure Status is set if not already (though controller sets it usually)
             if (string.IsNullOrEmpty(newNgo.Status))
                 newNgo.Status = "Pending";
             await _usersCollection.InsertOneAsync(newNgo);
@@ -85,7 +91,6 @@ namespace backend.Services
 
         public async Task UpdateAsync(string id, User updatedUser)
         {
-            // This replaces the document with the new data
             await _usersCollection.ReplaceOneAsync(x => x.Id == id, updatedUser);
         }
 

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { registerPublicUser } from "../API/AuthAPI";
 import Dog from "../assets/images/welcoming-dog.png";
 import Food from "../assets/images/pet-food.png";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 // Helper to parse ASP.NET backend errors
 const getErrorMessage = (error) => {
@@ -122,8 +122,6 @@ function Register() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-bl from-grey-400 to bg-gray-100 relative overflow-hidden">
-      <Toaster position="top-center" reverseOrder={false} />
-
       <div className="py-5 max-lg:px-12 lg:(pl-25 pr-15)">
         <div className="grid lg:grid-cols-2 items-center justify-center max-w-6xl w-full relative z-10 shadow-2xl rounded-2xl">
           {/* LEFT COLUMN: FORM */}

@@ -6,25 +6,43 @@ import {
 } from "../API/EventAPI";
 import { useAuth } from "../contexts/AuthContext";
 import EventCard from "../components/EventCard";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import LoadingScreen from "../components/LoadingScreen";
+
+// Debounce Hook to prevent API spam while typing
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 export default function Event() {
   const { user } = useAuth();
 
-  // 1. STATE MANAGEMENT
-  const [allEvents, setAllEvents] = useState([]); // 🟢 Master List (All Data)
-  const [events, setEvents] = useState([]); // 🟢 Display List (Filtered)
+  // --- STATE ---
+  const [events, setEvents] = useState([]); // Only one list needed now
   const [ngos, setNgos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProposalForm, setShowProposalForm] = useState(false);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 6;
 
   // Filters
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
 
-  // Proposal Form State
+  // Debounce expensive text searches
+  const debouncedSearch = useDebounce(search, 500);
+  const debouncedLocation = useDebounce(locationFilter, 500);
+
+  // Proposal Form
   const [proposal, setProposal] = useState({
     title: "",
     description: "",
@@ -35,61 +53,77 @@ export default function Event() {
     documents: [],
   });
 
-  // 2. FETCH DATA (Runs ONLY on Mount or after Submission)
-  const fetchData = async () => {
-    setLoading(true); // Show loading only when fetching from API
-    try {
-      const eventData = await getPublicEvents();
-      const ngoData = await getAllNgos();
+  // --- EFFECT 1: Load NGOs (Runs once) ---
+  useEffect(() => {
+    const loadNgos = async () => {
+      try {
+        const data = await getAllNgos();
+        setNgos(data);
+      } catch (err) {
+        console.error("Failed to load NGOs", err);
+      }
+    };
+    loadNgos();
+  }, []);
 
-      setAllEvents(eventData); // Store in Master List
-      setNgos(ngoData);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load data.");
-    } finally {
-      setLoading(false);
+  // --- EFFECT 2: Fetch Events (Runs on Filter/Page Change) ---
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const params = {
+          page,
+          pageSize,
+        };
+
+        if (debouncedSearch) params.search = debouncedSearch;
+        if (debouncedLocation) params.location = debouncedLocation;
+        if (dateFilter) params.date = dateFilter;
+
+        const response = await getPublicEvents(params);
+
+        // Handle the new Pagination Response format
+        // Check for 'Data' (PascalCase) or 'data' (camelCase)
+        const body = response && response.data ? response.data : response;
+        const list = body.Data || body.data;
+
+        if (list) {
+          setEvents(list);
+          setTotalPages(body.TotalPages || body.totalPages || 1);
+        } else if (Array.isArray(body)) {
+          // Fallback if backend is still sending a simple array
+          setEvents(body);
+          setTotalPages(1);
+        } else {
+          setEvents([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch events", error);
+        toast.error("Failed to load events.");
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [page, debouncedSearch, debouncedLocation, dateFilter]);
+
+  // --- HANDLERS ---
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []); // 🟢 Empty dependency array = Runs once on mount
+  const handleClearFilters = () => {
+    setSearch("");
+    setLocationFilter("");
+    setDateFilter("");
+    setPage(1);
+  };
 
-  // 3. FILTER DATA (Runs whenever filters change - Client Side)
-  useEffect(() => {
-    let filtered = [...allEvents]; // Copy master list
-
-    // A. Search Filter
-    if (search) {
-      const term = search.toLowerCase();
-      filtered = filtered.filter(
-        (e) =>
-          e.title.toLowerCase().includes(term) ||
-          e.description.toLowerCase().includes(term)
-      );
-    }
-
-    // B. Location Filter
-    if (locationFilter) {
-      const term = locationFilter.toLowerCase();
-      filtered = filtered.filter((e) =>
-        e.location?.toLowerCase().includes(term)
-      );
-    }
-
-    // C. Date Filter
-    if (dateFilter) {
-      filtered = filtered.filter((e) => e.eventDate.startsWith(dateFilter));
-    }
-
-    // D. Sort (Soonest First)
-    filtered.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
-
-    setEvents(filtered); // Update Display List
-  }, [allEvents, search, locationFilter, dateFilter]); // 🟢 Runs instantly on change
-
-  // --- HANDLERS (Unchanged) ---
   const handleDocumentUpload = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -158,7 +192,8 @@ export default function Event() {
         documents: [],
       });
 
-      fetchData(); // Refresh Master List
+      // Refresh list by resetting page
+      setPage(1);
     } catch (error) {
       console.error(error);
       toast.error("Failed to submit proposal.");
@@ -169,9 +204,7 @@ export default function Event() {
     <>
       {loading && <LoadingScreen />}
 
-      {/* 🟢 OUTER WRAPPER */}
-      <div className="min-h-screen bg-[#d5a07d] px-4 flex justify-center items-start">
-        {/* 🟢 MAIN CARD CONTAINER */}
+      <div className="min-h-screen bg-[#d5a07d] px-4 flex justify-center items-start pb-18 pt-10">
         <div className="flex flex-col lg:flex-row w-full max-w-7xl bg-white shadow-xl rounded-2xl overflow-hidden fredoka min-h-[80vh]">
           {/* FILTERS SIDEBAR */}
           <div className="w-full lg:w-[280px] shrink-0 py-6 border-r border-gray-100 bg-white">
@@ -181,11 +214,7 @@ export default function Event() {
               </h3>
               <button
                 type="button"
-                onClick={() => {
-                  setSearch("");
-                  setLocationFilter("");
-                  setDateFilter("");
-                }}
+                onClick={handleClearFilters}
                 className="text-sm text-red-500 font-semibold ml-auto cursor-pointer hover:underline"
               >
                 Clear all
@@ -199,9 +228,12 @@ export default function Event() {
                 <input
                   type="text"
                   placeholder="Keywords..."
-                  className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border rounded-md bg-gray-50 outline-none focus:ring-2 focus:ring-teal-100"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1); // Reset to page 1 on filter
+                  }}
                 />
               </div>
               <div>
@@ -211,25 +243,31 @@ export default function Event() {
                 <input
                   type="text"
                   placeholder="City or Venue"
-                  className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border rounded-md bg-gray-50 outline-none focus:ring-2 focus:ring-teal-100"
                   value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
+                  onChange={(e) => {
+                    setLocationFilter(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
               <div>
                 <h6 className="text-slate-900 text-sm font-bold mb-2">Date</h6>
                 <input
                   type="date"
-                  className="w-full px-3 py-2 border rounded-md bg-gray-50"
+                  className="w-full px-3 py-2 border rounded-md bg-gray-50 outline-none focus:ring-2 focus:ring-teal-100"
                   value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
+                  onChange={(e) => {
+                    setDateFilter(e.target.value);
+                    setPage(1);
+                  }}
                 />
               </div>
             </div>
           </div>
 
           {/* MAIN CONTENT */}
-          <div className="flex-1 p-6 bg-gray-50">
+          <div className="flex-1 p-6 bg-gray-50 flex flex-col">
             <div className="flex flex-col md:flex-row justify-between items-center mb-8">
               <div>
                 <h1 className="text-3xl font-bold text-slate-800 font-gloria">
@@ -249,7 +287,7 @@ export default function Event() {
 
             {/* PROPOSAL MODAL */}
             {showProposalForm && (
-              <div className="mb-8 bg-white p-6 rounded-2xl shadow-xl border border-indigo-50 animate-fadeIn">
+              <div className="mb-8 bg-white p-6 rounded-2xl shadow-xl border border-teal-50 animate-fadeIn">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-slate-800">
                     Submit Event Proposal
@@ -294,7 +332,6 @@ export default function Event() {
                     }
                   />
 
-                  {/* NGO SELECTION */}
                   {user?.userRole !== "NGO" && (
                     <div>
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">
@@ -324,20 +361,16 @@ export default function Event() {
                     </div>
                   )}
 
-                  {/* DOCUMENT UPLOAD */}
                   <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-300">
                     <label className="block text-sm font-bold text-gray-600 mb-1">
                       Attach Proposal Documents
                     </label>
-                    <p className="text-xs text-gray-400 mb-2">
-                      Upload PDFs or Word documents (Max 5MB each)
-                    </p>
                     <input
                       type="file"
                       multiple
-                      accept=".pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      accept=".pdf,.doc,.docx"
                       onChange={handleDocumentUpload}
-                      className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                     />
                     {proposal.documents.length > 0 && (
                       <div className="mt-2 text-xs text-green-600 font-medium">
@@ -367,7 +400,7 @@ export default function Event() {
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                      className="px-6 py-2 bg-[#009e8c] text-white rounded-lg hover:bg-teal-700 font-medium"
                     >
                       Submit Proposal
                     </button>
@@ -377,18 +410,50 @@ export default function Event() {
             )}
 
             {/* EVENTS GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {events.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+              {!loading &&
+                events.map((event) => (
+                  <EventCard key={event.id} event={event} />
+                ))}
               {events.length === 0 && !loading && (
                 <div className="col-span-full text-center py-20 text-gray-500">
                   <p className="text-xl">
                     No events found matching your filters.
                   </p>
+                  <button
+                    onClick={handleClearFilters}
+                    className="text-[#009e8c] hover:underline mt-2 font-bold"
+                  >
+                    Clear all filters
+                  </button>
                 </div>
               )}
             </div>
+
+            {/* PAGINATION CONTROLS */}
+            {!loading && events.length > 0 && (
+              <div className="mt-auto flex justify-center items-center gap-4 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  className="px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Previous
+                </button>
+
+                <span className="text-sm font-bold text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
+
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 rounded-md bg-[#009e8c] text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

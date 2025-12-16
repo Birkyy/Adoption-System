@@ -1,5 +1,7 @@
+using System.Security.Claims; // Required for User.FindFirst
 using backend.Models.Domain;
 using backend.Services;
+using Microsoft.AspNetCore.Authorization; // Required for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -23,80 +25,188 @@ namespace backend.Controllers
             _eventService = eventService;
         }
 
+        // 1. GET PUBLIC LISTINGS (Paginated)
         [HttpGet]
-        public async Task<ActionResult<List<Volunteer>>> GetAll()
+        public async Task<ActionResult<object>> GetAll(
+            [FromQuery] string? search,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 6
+        )
         {
-            var listings = await _volunteerService.GetAllAsync();
-            return Ok(listings);
+            var (listings, total) = await _volunteerService.GetAvailableAsync(
+                search,
+                page,
+                pageSize
+            );
+
+            return Ok(
+                new
+                {
+                    TotalCount = total,
+                    TotalPages = (int)Math.Ceiling((double)total / pageSize),
+                    Page = page,
+                    PageSize = pageSize,
+                    Data = listings,
+                }
+            );
         }
 
-        [HttpGet("my-listings")]
-        public async Task<ActionResult<List<Volunteer>>> GetMyListings([FromQuery] string ngoId)
+        // 2. CREATE (NGO Only)
+        [HttpPost]
+        [Authorize(Roles = "NGO")]
+        public async Task<IActionResult> Create(Volunteer newListing)
         {
+            // SECURITY: Get NGO ID from Token
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(currentUserId))
+                return Unauthorized();
+
+            newListing.NgoId = currentUserId; // Force ownership
+            newListing.ApplicantIds = new List<string>();
+
+            await _volunteerService.CreateAsync(newListing);
+            return Ok(newListing);
+        }
+
+        // 3. APPLY (Public User)
+        [HttpPost("apply/{id}")]
+        [Authorize] // Must be logged in
+        public async Task<IActionResult> Apply(string id)
+        {
+            // SECURITY: Get Applicant ID from Token
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var listing = await _volunteerService.GetByIdAsync(id);
+            if (listing == null)
+                return NotFound();
+
+            // Prevent NGO from applying to own listing
+            if (listing.NgoId == userId)
+                return BadRequest("You cannot apply to your own listing.");
+
+            await _volunteerService.ApplyAsync(id, userId);
+            return Ok("Application successful. The NGO will contact you.");
+        }
+
+        // 4. GET MY LISTINGS (NGO Only)
+        [HttpGet("my-listings")]
+        [Authorize(Roles = "NGO")]
+        public async Task<ActionResult<List<Volunteer>>> GetMyListings()
+        {
+            // SECURITY FIX: Get ID from the Token, NOT the URL
+            var ngoId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
             if (string.IsNullOrEmpty(ngoId))
-                return BadRequest("NgoId is required.");
+                return Unauthorized();
+
             var listings = await _volunteerService.GetByNgoIdAsync(ngoId);
             return Ok(listings);
         }
 
-        [HttpGet("star-talent/{ngoId}")]
-        public async Task<IActionResult> GetStarTalent(string ngoId)
+        // 5. DELETE (Owner Only)
+        [HttpDelete("{id:length(24)}")]
+        [Authorize(Roles = "NGO")]
+        public async Task<IActionResult> Delete(string id)
         {
-            // 1. Fetch Data using Services
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var listing = await _volunteerService.GetByIdAsync(id);
+            if (listing == null)
+                return NotFound();
+
+            // SECURITY: Check ownership
+            if (listing.NgoId != currentUserId)
+                return StatusCode(403, "Access Denied.");
+
+            await _volunteerService.RemoveAsync(id);
+            return Ok("Listing removed.");
+        }
+
+        // 6. GET APPLICANTS (Owner Only)
+        [HttpGet("applicants/{id}")]
+        [Authorize(Roles = "NGO")]
+        public async Task<ActionResult<List<object>>> GetApplicants(string id)
+        {
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var listing = await _volunteerService.GetByIdAsync(id);
+            if (listing == null)
+                return NotFound();
+
+            if (listing.NgoId != currentUserId)
+                return StatusCode(403, "Access Denied.");
+
+            var applicants = new List<object>();
+            foreach (var userId in listing.ApplicantIds)
+            {
+                var user = await _userService.GetByIdAsync(userId);
+                if (user != null)
+                {
+                    // Return Safe DTO (No Password)
+                    applicants.Add(
+                        new
+                        {
+                            user.Id,
+                            user.Name,
+                            user.Email,
+                            user.ContactInfo,
+                            user.Username,
+                        }
+                    );
+                }
+            }
+            return Ok(applicants);
+        }
+
+        // 7. STAR TALENT (Secure - NGO Only)
+        // This calculates which volunteers are most active for THIS specific NGO
+        [HttpGet("star-talent")]
+        [Authorize(Roles = "NGO")]
+        public async Task<IActionResult> GetStarTalent()
+        {
+            var ngoId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(ngoId))
+                return Unauthorized();
+
+            // 1. Fetch Data
             var events = await _eventService.GetByNgoIdAsync(ngoId);
             var listings = await _volunteerService.GetByNgoIdAsync(ngoId);
 
             // 2. Calculate Scores
             var scores = new Dictionary<string, int>();
 
-            // Score from Events
+            void AddScore(IEnumerable<string>? ids)
+            {
+                if (ids == null)
+                    return;
+                foreach (var uid in ids)
+                {
+                    if (uid == ngoId)
+                        continue; // Skip self
+                    if (!scores.ContainsKey(uid))
+                        scores[uid] = 0;
+                    scores[uid]++;
+                }
+            }
+
             foreach (var ev in events)
-            {
-                if (ev.ParticipantIds == null)
-                    continue;
-                foreach (var userId in ev.ParticipantIds)
-                {
-                    // 🟢 FIX: Skip if the participant is the NGO itself
-                    if (userId == ngoId)
-                        continue;
-
-                    if (!scores.ContainsKey(userId))
-                        scores[userId] = 0;
-                    scores[userId]++;
-                }
-            }
-
-            // Score from Volunteer Applications
+                AddScore(ev.ParticipantIds);
             foreach (var vol in listings)
-            {
-                if (vol.ApplicantIds == null)
-                    continue;
-                foreach (var userId in vol.ApplicantIds)
-                {
-                    // 🟢 FIX: Skip if the applicant is the NGO itself (Just in case)
-                    if (userId == ngoId)
-                        continue;
+                AddScore(vol.ApplicantIds);
 
-                    if (!scores.ContainsKey(userId))
-                        scores[userId] = 0;
-                    scores[userId]++;
-                }
-            }
-
-            // 3. Get Top 5 User IDs
+            // 3. Get Top 5
             var topUserIds = scores
                 .OrderByDescending(x => x.Value)
                 .Take(5)
                 .Select(x => x.Key)
                 .ToList();
-
             if (!topUserIds.Any())
                 return Ok(new List<object>());
 
-            // 4. Fetch User Details
+            // 4. Return Details
             var topUsers = await _userService.GetUsersByIdsAsync(topUserIds);
-
-            // 5. Combine & Return
             var result = topUsers
                 .Select(u => new
                 {
@@ -106,79 +216,9 @@ namespace backend.Controllers
                     u.ContactInfo,
                     Score = scores[u.Id],
                 })
-                .OrderByDescending(x => x.Score)
-                .ToList();
+                .OrderByDescending(x => x.Score);
 
             return Ok(result);
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Create(Volunteer newListing)
-        {
-            if (string.IsNullOrEmpty(newListing.NgoId))
-                return BadRequest("NgoId required.");
-
-            // Verify NGO
-            var user = await _userService.GetByIdAsync(newListing.NgoId);
-            if (user == null || user.UserRole != "NGO")
-                return StatusCode(403, "Only NGOs can recruit.");
-
-            await _volunteerService.CreateAsync(newListing);
-            return Ok(newListing);
-        }
-
-        [HttpPost("apply/{id}")]
-        public async Task<IActionResult> Apply(string id, [FromQuery] string userId)
-        {
-            var listing = await _volunteerService.GetByIdAsync(id);
-            if (listing == null)
-                return NotFound();
-
-            await _volunteerService.ApplyAsync(id, userId);
-            return Ok("Application successful. The NGO will contact you.");
-        }
-
-        [HttpDelete("{id:length(24)}")]
-        public async Task<IActionResult> Delete(string id, [FromQuery] string currentUserId)
-        {
-            var listing = await _volunteerService.GetByIdAsync(id);
-            if (listing == null)
-                return NotFound();
-
-            if (listing.NgoId != currentUserId)
-                return StatusCode(403, "Access Denied.");
-
-            await _volunteerService.RemoveAsync(id);
-            return Ok("Listing removed.");
-        }
-
-        // --- SPECIAL ENDPOINT: Get Applicant Details for NGO ---
-        [HttpGet("applicants/{id}")]
-        public async Task<ActionResult<List<User>>> GetApplicants(
-            string id,
-            [FromQuery] string currentUserId
-        )
-        {
-            var listing = await _volunteerService.GetByIdAsync(id);
-            if (listing == null)
-                return NotFound();
-
-            // Security Check: Only the owner NGO can see applicants
-            if (listing.NgoId != currentUserId)
-                return StatusCode(403, "Access Denied.");
-
-            var applicants = new List<User>();
-            foreach (var userId in listing.ApplicantIds)
-            {
-                var user = await _userService.GetByIdAsync(userId);
-                if (user != null)
-                {
-                    // Clean sensitive data before sending
-                    user.Password = "";
-                    applicants.Add(user);
-                }
-            }
-            return Ok(applicants);
         }
     }
 }

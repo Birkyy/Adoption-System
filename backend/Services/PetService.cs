@@ -1,6 +1,7 @@
 using backend.Models.Domain;
 using backend.Models.Settings;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson; // <--- REQUIRED for Regex
 using MongoDB.Driver;
 
 namespace backend.Services
@@ -37,30 +38,34 @@ namespace backend.Services
         public async Task RemoveAsync(string id) =>
             await _petsCollection.DeleteOneAsync(x => x.PetId == id);
 
-        // Get pets with optional filters
-        public async Task<List<Pet>> GetAsync(
+        // GET PETS with Filters + Pagination
+        // Returns a Tuple: (List of Pets, Total Count)
+        public async Task<(List<Pet> Pets, long TotalCount)> GetAsync(
             string? name = null,
             string? breed = null,
             string? species = null,
             string? age = null,
-            string? status = null
+            string? gender = null, // <--- 1. New Gender Filter
+            string? status = null,
+            int pageNumber = 1, // <--- 2. Pagination Params
+            int pageSize = 10
         )
         {
             var builder = Builders<Pet>.Filter;
-
             var filter = builder.Empty;
 
+            // 3. Usability: Case-Insensitive Fuzzy Search
             if (!string.IsNullOrEmpty(name))
             {
-                filter &= builder.Eq(p => p.Name, name);
+                filter &= builder.Regex(p => p.Name, new BsonRegularExpression(name, "i"));
             }
 
             if (!string.IsNullOrEmpty(breed))
             {
-                filter &= builder.Eq(p => p.Breed, breed);
+                filter &= builder.Regex(p => p.Breed, new BsonRegularExpression(breed, "i"));
             }
 
-            if (!string.IsNullOrEmpty(species))
+            if (!string.IsNullOrEmpty(species) && species != "All")
             {
                 filter &= builder.Eq(p => p.Species, species);
             }
@@ -70,12 +75,28 @@ namespace backend.Services
                 filter &= builder.Eq(p => p.Age, age);
             }
 
+            // 4. Performance: Filter Gender at Database Level
+            if (!string.IsNullOrEmpty(gender) && gender != "All")
+            {
+                filter &= builder.Eq(p => p.Gender, gender);
+            }
+
             if (!string.IsNullOrEmpty(status))
             {
                 filter &= builder.Eq(p => p.Status, status);
             }
 
-            return await _petsCollection.Find(filter).ToListAsync();
+            // 5. Scalability: Get Total Count (for "Page 1 of 50")
+            var totalRecords = await _petsCollection.CountDocumentsAsync(filter);
+
+            // 6. Scalability: Get only the requested slice of data
+            var pets = await _petsCollection
+                .Find(filter)
+                .Skip((pageNumber - 1) * pageSize)
+                .Limit(pageSize)
+                .ToListAsync();
+
+            return (pets, totalRecords);
         }
     }
 }

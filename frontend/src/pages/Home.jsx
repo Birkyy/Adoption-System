@@ -4,7 +4,7 @@ import Slider from "../components/Slider.jsx";
 import CardButton from "../components/CardButton.jsx";
 import Card from "../components/Card.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
-import PetFood from "../assets/icons/dog-food.svg"; // 2. Import Food Image
+import PetFood from "../assets/icons/dog-food.svg";
 import PetBowl from "../assets/icons/pet-bowl.svg";
 import Collar from "../assets/icons/collar.svg";
 
@@ -87,10 +87,17 @@ function Home() {
 
       try {
         // API Call using Axios function
-        const data = await getPetsBySpecies(activeCategory, "Available");
+        const response = await getPetsBySpecies(activeCategory, "Available");
+
+        // 🟢 FIX: Handle both Old (Array) and New (Paginated Object) backend responses
+        // If 'response' has .Data (PascalCase) or .data (camelCase), use that. Otherwise use response itself.
+        const rawList = response.Data || response.data || response;
+
+        // Ensure it is an array before mapping
+        const petArray = Array.isArray(rawList) ? rawList : [];
 
         // Transform API data to match Card component props
-        const formattedData = data.map((pet) => ({
+        const formattedData = petArray.map((pet) => ({
           ...pet,
           // Use the first photo from the array, or fallback to single imageUrl, or fallback to local default
           image:
@@ -242,7 +249,7 @@ function Home() {
           />
         </section>
 
-        {/* ... Rest of your sections (Adoption Journey, Hero, Partner) remain unchanged ... */}
+        {/* ... Rest of your sections ... */}
         <section
           id="hero-section"
           className="relative min-h-screen snap-start snap-always bg-gray-100 flex items-center justify-center box-border w-full"
