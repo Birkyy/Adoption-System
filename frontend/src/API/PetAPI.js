@@ -1,16 +1,13 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:5118/api";
+import api from "./axiosInstance";
 
 export const getPets = async (filters = {}) => {
   try {
-
     const params = {
       status: "Available",
       ...filters
     };
-
-    const response = await axios.get(`${BASE_URL}/Pets`, { params });
+    // api.get("/Pets", { params }) is cleaner
+    const response = await api.get("/Pets", { params });
     return response.data;
   } catch (error) {
     throw error;
@@ -23,7 +20,7 @@ export const getPetsBySpecies = async (species, status = "Available") => {
 
 export const getPetById = async (id) => {
   try {
-    const response = await axios.get(`${BASE_URL}/Pets/${id}`);
+    const response = await api.get(`/Pets/${id}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -32,7 +29,7 @@ export const getPetById = async (id) => {
 
 export const updatePet = async (id, petData, userId) => {
   try {
-    const response = await axios.put(`${BASE_URL}/Pets/${id}?currentUserId=${userId}`, petData);
+    const response = await api.put(`/Pets/${id}?currentUserId=${userId}`, petData);
     return response.data;
   } catch (error) {
     throw error;

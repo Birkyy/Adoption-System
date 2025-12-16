@@ -1,5 +1,7 @@
+using System.Text.RegularExpressions;
 using backend.Models.Domain;
 using backend.Models.DTO;
+using backend.Services;
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +12,28 @@ namespace backend.Controllers
     public class UsersController : ControllerBase
     {
         private readonly UserService _userService;
+        private readonly TokenService _tokenService;
 
-        public UsersController(UserService userService)
+        public UsersController(UserService userService, TokenService tokenService)
         {
             _userService = userService;
+            _tokenService = tokenService;
+        }
+
+        private bool IsPasswordSecure(string password)
+        {
+            if (string.IsNullOrEmpty(password) || password.Length < 8)
+                return false;
+
+            // Check for number
+            if (!Regex.IsMatch(password, @"[0-9]"))
+                return false;
+
+            // Check for symbol (non-alphanumeric)
+            if (!Regex.IsMatch(password, @"[^a-zA-Z0-9]"))
+                return false;
+
+            return true;
         }
 
         [HttpGet("ngos")]
@@ -30,15 +50,33 @@ namespace backend.Controllers
                 return BadRequest("Email and Password are required.");
 
             var user = await _userService.LoginAsync(request.Email, request.Password);
+
             if (user == null)
                 return Unauthorized("Invalid email or password.");
-            user.Password = "";
-            return Ok(user);
+
+            if (user.Status == "Pending")
+                return Unauthorized("Your account is still pending approval.");
+
+            // Generate JWT Token
+            var token = _tokenService.CreateToken(user);
+
+            user.Password = ""; // Clear password before returning
+
+            // Return both the user info and the token
+            return Ok(new { User = user, Token = token });
         }
 
         [HttpPost("register/public")]
         public async Task<IActionResult> RegisterPublic(Public newPublicUser)
         {
+            // Add Security Check Here
+            if (!IsPasswordSecure(newPublicUser.Password))
+            {
+                return BadRequest(
+                    "Password must be at least 8 characters long and contain at least one number and one symbol."
+                );
+            }
+
             await _userService.CreatePublicAsync(newPublicUser);
             return CreatedAtAction(nameof(GetById), new { id = newPublicUser.Id }, newPublicUser);
         }

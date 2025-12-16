@@ -1,16 +1,16 @@
-import axios from "axios";
+import api from "./axiosInstance";
 
-const BASE_URL = "http://localhost:5118/api/Users";
+// Note: The axiosInstance base URL is ".../api", 
+// so we append "/Users" here.
 
 /**
  * Fetch a user by their ID
  * @param {string} userId 
  * @returns {Promise<Object>} User data
  */
-
 export const getUserById = async (userId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/${userId}`);
+    const response = await api.get(`/Users/${userId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -20,13 +20,12 @@ export const getUserById = async (userId) => {
 /**
  * Update user profile data
  * @param {string} userId 
- * @param {Object} userData - Object containing name, email, profession, bio, avatar, etc.
+ * @param {Object} userData 
  * @returns {Promise<Object>} Response data
  */
-
 export const updateUser = async (userId, userData) => {
   try {
-    const response = await axios.put(`${BASE_URL}/${userId}`, userData);
+    const response = await api.put(`/Users/${userId}`, userData);
     return response.data;
   } catch (error) {
     throw error;

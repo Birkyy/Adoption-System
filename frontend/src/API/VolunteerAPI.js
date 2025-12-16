@@ -1,40 +1,38 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:5118/api";
+import api from "./axiosInstance";
 
 export const getVolunteerListings = async () => {
-  const response = await axios.get(`${BASE_URL}/Volunteer`);
+  const response = await api.get("/Volunteer");
   return response.data;
 };
 
 export const getMyVolunteerListings = async (ngoId) => {
-  const response = await axios.get(`${BASE_URL}/Volunteer/my-listings?ngoId=${ngoId}`);
+  const response = await api.get(`/Volunteer/my-listings?ngoId=${ngoId}`);
   return response.data;
 };
 
 export const createVolunteerListing = async (data) => {
-  const response = await axios.post(`${BASE_URL}/Volunteer`, data);
+  const response = await api.post("/Volunteer", data);
   return response.data;
 };
 
 export const applyForVolunteer = async (listingId, userId) => {
-  const response = await axios.post(`${BASE_URL}/Volunteer/apply/${listingId}?userId=${userId}`);
+  const response = await api.post(`/Volunteer/apply/${listingId}?userId=${userId}`);
   return response.data;
 };
 
 export const deleteVolunteerListing = async (listingId, currentUserId) => {
-  const response = await axios.delete(`${BASE_URL}/Volunteer/${listingId}?currentUserId=${currentUserId}`);
+  const response = await api.delete(`/Volunteer/${listingId}?currentUserId=${currentUserId}`);
   return response.data;
 };
 
 export const getApplicants = async (listingId, currentUserId) => {
-  const response = await axios.get(`${BASE_URL}/Volunteer/applicants/${listingId}?currentUserId=${currentUserId}`);
+  const response = await api.get(`/Volunteer/applicants/${listingId}?currentUserId=${currentUserId}`);
   return response.data;
 };
 
 export const getStarTalent = async (ngoId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/Volunteer/star-talent/${ngoId}`);
+    const response = await api.get(`/Volunteer/star-talent/${ngoId}`);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch star talent:", error);

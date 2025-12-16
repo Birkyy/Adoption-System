@@ -8,44 +8,62 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null); // Add token state
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check both storages on initial load
+    // Check storage on load
     const storedUser =
       localStorage.getItem("user") || sessionStorage.getItem("user");
-    if (storedUser) {
+    const storedToken =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
     setLoading(false);
   }, []);
 
-  const login = (userData, rememberMe) => {
+  const login = (userData, authToken, rememberMe) => {
     // 1. Update State
     setUser(userData);
+    setToken(authToken);
 
     // 2. Update Storage
     if (rememberMe) {
       localStorage.setItem("user", JSON.stringify(userData));
+      localStorage.setItem("token", authToken);
     } else {
       sessionStorage.setItem("user", JSON.stringify(userData));
+      sessionStorage.setItem("token", authToken);
     }
   };
 
   const logout = () => {
-    // 1. Clear State
     setUser(null);
+    setToken(null);
 
-    // 2. Clear Storage
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     sessionStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+  };
+
+  // 3. Helper to get the current token (useful for non-React files)
+  const getAccessToken = () => {
+    return (
+      token || localStorage.getItem("token") || sessionStorage.getItem("token")
+    );
   };
 
   const value = {
     user,
+    token,
     login,
     logout,
     loading,
+    getAccessToken, // Export this for use in API files
   };
 
   return (

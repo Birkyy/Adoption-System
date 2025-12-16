@@ -1,10 +1,8 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:5118/api";
+import api from "./axiosInstance";
 
 export const getPublicArticles = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/Articles`);
+    const response = await api.get("/Articles");
     return response.data;
   } catch (error) {
     throw error;
@@ -13,17 +11,17 @@ export const getPublicArticles = async () => {
 
 export const getArticleById = async (id) => {
   try {
-    const response = await axios.get(`${BASE_URL}/Articles/${id}`);
+    const response = await api.get(`/Articles/${id}`);
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-// --- NEW: Create Article ---
 export const createArticle = async (articleData) => {
   try {
-    const response = await axios.post(`${BASE_URL}/Articles`, articleData);
+    // The JWT token is now automatically attached by the interceptor
+    const response = await api.post("/Articles", articleData);
     return response.data;
   } catch (error) {
     throw error;

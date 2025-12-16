@@ -1,15 +1,27 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { loginUser } from "../API/AuthAPI";
-import { useAuth } from "../contexts/AuthContext"; // <--- 1. Import the Hook
+import { useAuth } from "../contexts/AuthContext";
 import Dog from "../assets/images/welcoming-dog.png";
 import Food from "../assets/images/pet-food.png";
 import toast from "react-hot-toast";
 
+// Helper to parse ASP.NET backend errors
+const getErrorMessage = (error) => {
+  if (error.response && error.response.data) {
+    const data = error.response.data;
+    if (typeof data === "string") return data;
+    if (data.errors) {
+      const firstErrorKey = Object.keys(data.errors)[0];
+      if (firstErrorKey) return data.errors[firstErrorKey][0];
+    }
+    if (data.title) return data.title;
+  }
+  return "Invalid email or password.";
+};
+
 function SignIn() {
   const navigate = useNavigate();
-
-  // 2. Get the login function and user state from Context
   const { login, user } = useAuth();
 
   // Form States
@@ -22,9 +34,7 @@ function SignIn() {
   const [dogLoaded, setDogLoaded] = useState(false);
   const [foodLoaded, setFoodLoaded] = useState(false);
 
-  // 3. CHECK IF USER IS ALREADY LOGGED IN (Using Context User)
   useEffect(() => {
-    // If the Context has a user, redirect them
     if (user) {
       if (user.userRole === "Admin") {
         navigate("/admin");
@@ -38,22 +48,27 @@ function SignIn() {
 
   const handleLogin = async () => {
     setError("");
-
     const loadingToast = toast.loading("Signing in...");
 
     try {
-      const userData = await loginUser(email, password);
+      const response = await loginUser({ email, password });
 
-      // 🟢 FIX: Dismiss and Show Success FIRST (Before redirecting)
+      // Destructure User and Token
+      const { user: userData, token } = response.data;
+
+      login(userData, token, rememberMe);
+
       toast.dismiss(loadingToast);
-      toast.success(`Welcome back, ${userData.name}!`);
 
-      // 🔴 THIS triggers the redirect (keep it last)
-      login(userData, rememberMe);
+      // Use userData here (which we just extracted)
+      toast.success(`Welcome back, ${userData.name || "User"}!`);
     } catch (err) {
       toast.dismiss(loadingToast);
-      toast.error("Invalid email or password.");
-      setError("Invalid email or password.");
+
+      // Use helper to avoid object crash
+      const msg = getErrorMessage(err);
+      toast.error(msg);
+      setError(msg);
     }
   };
 
@@ -88,6 +103,7 @@ function SignIn() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
+                  {/* SVG FIXED HERE */}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -200,10 +216,9 @@ function SignIn() {
 
           {/* RIGHT COLUMN: IMAGES */}
           <div className="bg-radial from-[#e3e0f3] to-[#bac7de] from-60% h-full w-full flex items-center justify-center rounded-r-2xl relative overflow-hidden">
-            {/* DOG IMAGE */}
             <img
               src={Dog}
-              onLoad={() => setDogLoaded(true)} // Trigger fade-in when downloaded
+              onLoad={() => setDogLoaded(true)}
               className={`w-3/4 max-lg:w-0 block object-cover relative z-10 transition-opacity duration-1000 ease-out ${
                 dogLoaded
                   ? "opacity-100 translate-y-0"
@@ -211,10 +226,9 @@ function SignIn() {
               }`}
               alt="Two dogs say welcome"
             />
-            {/* FOOD IMAGE */}
             <img
               src={Food}
-              onLoad={() => setFoodLoaded(true)} // Trigger fade-in when downloaded
+              onLoad={() => setFoodLoaded(true)}
               alt=""
               className={`absolute w-2/7 h-2/7 right-1/8 bottom-1/8 max-lg:hidden transition-opacity duration-1000 delay-200 ease-out ${
                 foodLoaded

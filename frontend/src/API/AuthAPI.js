@@ -1,10 +1,11 @@
-import axios from "axios";
+import api from "./axiosInstance";
 
-const API_BASE_URL = "http://localhost:5118/api/users"; 
+// Note: axiosInstance base URL is likely "http://localhost:5118/api"
+// So we just append "/users/..."
 
 export const loginUser = async (email, password) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/login`, {
+    const response = await api.post("/users/login", {
       email,
       password,
     });
@@ -17,7 +18,7 @@ export const loginUser = async (email, password) => {
 
 export const registerPublicUser = async (userData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/register/public`, userData);
+    const response = await api.post("/users/register/public", userData);
     return response.data;
   } catch (error) {
     console.error("Registration failed:", error);
@@ -27,7 +28,7 @@ export const registerPublicUser = async (userData) => {
 
 export const requestNgoAccount = async (ngoData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/request/ngo`, ngoData);
+    const response = await api.post("/users/request/ngo", ngoData);
     return response.data;
   } catch (error) {
     throw error;

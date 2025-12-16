@@ -1,10 +1,8 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:5118/api";
+import api from "./axiosInstance";
 
 export const submitAdoptionApplication = async (applicationData) => {
   try {
-    const response = await axios.post(`${BASE_URL}/Adoptions`, applicationData);
+    const response = await api.post("/Adoptions", applicationData);
     return response.data;
   } catch (error) {
     throw error;
@@ -13,7 +11,10 @@ export const submitAdoptionApplication = async (applicationData) => {
 
 export const getMyApplications = async (userId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/Adoptions/my-applications?userId=${userId}`);
+    // Note: If you want to secure this further, you could remove 'userId' from the query 
+    // and extract it from the Token on the backend instead! 
+    // For now, we keep it as is.
+    const response = await api.get(`/Adoptions/my-applications?userId=${userId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -21,6 +22,10 @@ export const getMyApplications = async (userId) => {
 };
 
 export const withdrawApplication = async (appId, userId) => {
-  const response = await axios.delete(`${BASE_URL}/Adoptions/${appId}?applicantId=${userId}`);
-  return response.data;
+  try {
+    const response = await api.delete(`/Adoptions/${appId}?applicantId=${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };

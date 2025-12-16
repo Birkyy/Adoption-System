@@ -23,8 +23,21 @@ export default function Partner() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validatePassword = (password) => {
+    // At least 8 chars, 1 number, 1 symbol
+    const passwordRegex = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$/;
+    return passwordRegex.test(password);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validatePassword(formData.password)) {
+      toast.error(
+        "Password must be at least 8 characters long, contain at least one number and one symbol."
+      );
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match.");

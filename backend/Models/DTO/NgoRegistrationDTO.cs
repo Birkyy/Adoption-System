@@ -15,6 +15,11 @@ namespace backend.Models.DTO
         public string Email { get; set; } = null!;
 
         [Required]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [RegularExpression(
+            @"^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$",
+            ErrorMessage = "Password must contain at least one number and one symbol."
+        )]
         public string Password { get; set; } = null!;
 
         [Required]

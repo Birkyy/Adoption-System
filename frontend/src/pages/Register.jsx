@@ -5,6 +5,28 @@ import Dog from "../assets/images/welcoming-dog.png";
 import Food from "../assets/images/pet-food.png";
 import toast, { Toaster } from "react-hot-toast";
 
+// Helper to parse ASP.NET backend errors
+const getErrorMessage = (error) => {
+  if (error.response && error.response.data) {
+    const data = error.response.data;
+
+    // 1. If it's a simple string
+    if (typeof data === "string") return data;
+
+    // 2. If it's a Validation Error (e.g. { errors: { Password: [...] } })
+    if (data.errors) {
+      const firstErrorKey = Object.keys(data.errors)[0];
+      if (firstErrorKey) {
+        return data.errors[firstErrorKey][0];
+      }
+    }
+
+    // 3. Fallback to title
+    if (data.title) return data.title;
+  }
+  return "An unexpected error occurred. Please try again.";
+};
+
 const preloadImages = (imageArray) => {
   const promises = imageArray.map((src) => {
     return new Promise((resolve) => {
@@ -19,6 +41,12 @@ const preloadImages = (imageArray) => {
 
 function Register() {
   const navigate = useNavigate();
+
+  const validatePassword = (password) => {
+    // Min 8 chars, 1 number, 1 symbol
+    const passwordRegex = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{8,}$/;
+    return passwordRegex.test(password);
+  };
 
   const [formData, setFormData] = useState({
     username: "",
@@ -51,6 +79,13 @@ function Register() {
   const handleRegister = async () => {
     setError("");
 
+    if (!validatePassword(formData.password)) {
+      toast.error(
+        "Password must be at least 8 characters long, contain at least one number and one symbol."
+      );
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match!");
       return;
@@ -78,11 +113,10 @@ function Register() {
     } catch (err) {
       toast.dismiss(loadingToast);
 
-      toast.error(
-        err.response?.data || "Registration failed. Please check your details."
-      );
-
-      setError("Registration failed.");
+      // --- USE HELPER HERE ---
+      const message = getErrorMessage(err);
+      toast.error(message);
+      setError(message);
     }
   };
 
