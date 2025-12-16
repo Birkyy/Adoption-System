@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 
 // Helper to parse ASP.NET backend errors
 const getErrorMessage = (error) => {
+  // 1. Handle Backend Errors (400, 401, 500)
   if (error.response && error.response.data) {
     const data = error.response.data;
     if (typeof data === "string") return data;
@@ -17,6 +18,13 @@ const getErrorMessage = (error) => {
     }
     if (data.title) return data.title;
   }
+
+  // 2. Handle Frontend/Network Errors (Real Crashes)
+  if (error instanceof Error) {
+    console.error("Frontend Logic Error:", error); // Log real error to console
+    return error.message; // Show the real crash reason (temporary)
+  }
+
   return "Invalid email or password.";
 };
 
@@ -51,22 +59,31 @@ function SignIn() {
     const loadingToast = toast.loading("Signing in...");
 
     try {
-      const response = await loginUser({ email, password });
+      // 1. Call API (returns the data object directly)
+      const data = await loginUser(email, password);
 
-      // Destructure User and Token
-      const { user: userData, token } = response.data;
+      console.log("Login Data:", data); // Debug: Check if keys are 'User' or 'user'
 
+      // 2. Handle Case Sensitivity (.NET sends 'User', React usually likes 'user')
+      const userData = data.user || data.User;
+      const token = data.token || data.Token;
+
+      if (!userData || !token) {
+        throw new Error("Login succeeded but User data is missing.");
+      }
+
+      // 3. Update Context
       login(userData, token, rememberMe);
 
       toast.dismiss(loadingToast);
-
-      // Use userData here (which we just extracted)
-      toast.success(`Welcome back, ${userData.name || "User"}!`);
+      toast.success(
+        `Welcome back, ${userData.name || userData.Name || "User"}!`
+      );
     } catch (err) {
       toast.dismiss(loadingToast);
 
-      // Use helper to avoid object crash
       const msg = getErrorMessage(err);
+      console.error("Login Error:", err);
       toast.error(msg);
       setError(msg);
     }
@@ -103,7 +120,6 @@ function SignIn() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  {/* SVG FIXED HERE */}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"

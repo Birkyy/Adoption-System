@@ -1,8 +1,7 @@
-using System.Text.RegularExpressions;
 using backend.Models.Domain;
 using backend.Models.DTO;
 using backend.Services;
-using backend.Services;
+using Microsoft.AspNetCore.Authorization; // Needed for [Authorize]
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers
@@ -12,28 +11,13 @@ namespace backend.Controllers
     public class UsersController : ControllerBase
     {
         private readonly UserService _userService;
-        private readonly TokenService _tokenService;
+        private readonly TokenService _tokenService; // 1. Add this field
 
+        // 2. Inject TokenService in the constructor
         public UsersController(UserService userService, TokenService tokenService)
         {
             _userService = userService;
             _tokenService = tokenService;
-        }
-
-        private bool IsPasswordSecure(string password)
-        {
-            if (string.IsNullOrEmpty(password) || password.Length < 8)
-                return false;
-
-            // Check for number
-            if (!Regex.IsMatch(password, @"[0-9]"))
-                return false;
-
-            // Check for symbol (non-alphanumeric)
-            if (!Regex.IsMatch(password, @"[^a-zA-Z0-9]"))
-                return false;
-
-            return true;
         }
 
         [HttpGet("ngos")]
@@ -46,38 +30,52 @@ namespace backend.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            // 1. Basic Validation
             if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
                 return BadRequest("Email and Password are required.");
 
+            // 2. Check User & Password
             var user = await _userService.LoginAsync(request.Email, request.Password);
 
             if (user == null)
                 return Unauthorized("Invalid email or password.");
 
+            // 3. Check Status
             if (user.Status == "Pending")
                 return Unauthorized("Your account is still pending approval.");
 
-            // Generate JWT Token
+            if (user.Status == "Suspended")
+                return Unauthorized("Your account has been suspended.");
+
+            // 4. Generate REAL Token
             var token = _tokenService.CreateToken(user);
 
-            user.Password = ""; // Clear password before returning
+            // 5. Hide password before returning
+            user.Password = "";
 
-            // Return both the user info and the token
+            // 6. Return both User and Token
             return Ok(new { User = user, Token = token });
         }
 
         [HttpPost("register/public")]
-        public async Task<IActionResult> RegisterPublic(Public newPublicUser)
+        public async Task<IActionResult> RegisterPublic(PublicRegistrationDTO request)
         {
-            // Add Security Check Here
-            if (!IsPasswordSecure(newPublicUser.Password))
+            // Map DTO to Domain Model
+            var newPublicUser = new Public
             {
-                return BadRequest(
-                    "Password must be at least 8 characters long and contain at least one number and one symbol."
-                );
-            }
+                Username = request.Username,
+                Name = request.Name,
+                Email = request.Email,
+                Password = request.Password,
+                ContactInfo = request.ContactInfo,
+                UserRole = "Public",
+                Status = "Active",
+            };
 
             await _userService.CreatePublicAsync(newPublicUser);
+
+            // Auto-login after register? Or just return success.
+            // Usually we return 201 Created.
             return CreatedAtAction(nameof(GetById), new { id = newPublicUser.Id }, newPublicUser);
         }
 
@@ -93,16 +91,16 @@ namespace backend.Controllers
                 ContactInfo = request.ContactInfo,
                 Bio = request.Bio,
                 UserRole = "NGO",
-                Status = "Pending",
+                Status = "Pending", // NGO is always Pending first
                 Address = request.Address,
             };
 
             await _userService.CreateNgoAsync(newNgo);
-
             return CreatedAtAction(nameof(GetById), new { id = newNgo.Id }, newNgo);
         }
 
         [HttpGet("{id:length(24)}")]
+        [Authorize] // Protect user details
         public async Task<ActionResult<User>> GetById(string id)
         {
             var user = await _userService.GetByIdAsync(id);
@@ -113,14 +111,15 @@ namespace backend.Controllers
         }
 
         [HttpGet("admin/pending-ngos")]
+        [Authorize(Roles = "Admin")] // Only Admin
         public async Task<ActionResult<List<User>>> GetPendingNgos()
         {
             var pendingNgos = await _userService.GetPendingNgosAsync();
             return Ok(pendingNgos);
         }
 
-        // 3. Admin: Approve/Reject User
         [HttpPut("admin/status/{id}")]
+        [Authorize(Roles = "Admin")] // Only Admin
         public async Task<IActionResult> UpdateUserStatus(string id, [FromQuery] string status)
         {
             var user = await _userService.GetByIdAsync(id);
@@ -130,36 +129,6 @@ namespace backend.Controllers
             user.Status = status;
             await _userService.UpdateAsync(id, user);
             return Ok($"User status updated to {status}");
-        }
-
-        [HttpPut("{id:length(24)}")]
-        public async Task<IActionResult> Update(string id, [FromBody] UpdateUserDto request)
-        {
-            var existingUser = await _userService.GetByIdAsync(id);
-
-            if (existingUser is null)
-            {
-                return NotFound();
-            }
-
-            if (!string.IsNullOrEmpty(request.Email) && existingUser.Email != request.Email)
-            {
-                bool isTaken = await _userService.IsEmailTakenAsync(request.Email, id);
-                if (isTaken)
-                {
-                    return Conflict("Email is already in use by another account.");
-                }
-            }
-
-            existingUser.Name = request.Name;
-            existingUser.Email = request.Email ?? existingUser.Email;
-            existingUser.ContactInfo = request.ContactInfo;
-            existingUser.Bio = request.Bio;
-            existingUser.Avatar = request.Avatar;
-
-            await _userService.UpdateAsync(id, existingUser);
-
-            return NoContent();
         }
 
         [HttpPost("seed-admin")]
