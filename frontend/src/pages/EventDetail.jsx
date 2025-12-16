@@ -112,7 +112,7 @@ export default function EventDetail() {
   const eventDate = new Date(event.eventDate);
 
   return (
-    <div className="min-h-screen bg-amber-50 pb-12 fredoka">
+    <div className="min-h-screen bg-[#d5a07d] pb-12 fredoka">
       <Toaster position="top-right" />
 
       {/* HEADER / HERO */}

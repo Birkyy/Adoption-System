@@ -33,7 +33,7 @@ function Layout() {
         </main>
 
         {isHome && <BackButton />}
-        {isHome && <Footer />}
+        {showHeader && <Footer />}
       </div>
     </SlideProvider>
   );

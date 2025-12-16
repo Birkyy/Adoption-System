@@ -47,7 +47,7 @@ const Card = ({ content }) => {
             {content.breed}
           </p>
           <span className="text-xs text-gray-300 font-bold">·</span>
-          <p className="text-xs text-gray-500 font-medium">{content.age} yrs</p>
+          <p className="text-xs text-gray-500 font-medium">{content.age}</p>
         </div>
       </div>
     </button>

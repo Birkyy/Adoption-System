@@ -51,7 +51,7 @@ export default function ArticleDetail() {
   if (!article) return null;
 
   return (
-    <div className="min-h-screen bg-white pb-20 fredoka">
+    <div className="min-h-screen bg-[#d5a07d] pb-20 fredoka">
       <Toaster position="top-right" />
 
       {/* Hero / Cover Image */}
@@ -94,7 +94,7 @@ export default function ArticleDetail() {
 
       {/* Article Content Container */}
       <article className="max-w-4xl mx-auto px-6 md:px-12 -mt-10 relative z-10">
-        <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 border border-gray-100">
+        <div className="bg-gray-100 rounded-3xl shadow-xl p-8 md:p-12 border border-gray-100">
           {/* Author Block */}
           <div className="flex items-center gap-4 mb-10 pb-8 border-b border-gray-100">
             <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl uppercase">
@@ -118,19 +118,6 @@ export default function ArticleDetail() {
             className="prose prose-lg prose-slate max-w-none text-slate-600 leading-relaxed"
             dangerouslySetInnerHTML={{ __html: article.content }}
           />
-
-          {/* Footer */}
-          <div className="mt-12 pt-8 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-slate-500 font-medium">Share this story:</p>
-            <div className="flex gap-4">
-              <button className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                f
-              </button>
-              <button className="w-10 h-10 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-100 transition-colors">
-                t
-              </button>
-            </div>
-          </div>
         </div>
       </article>
     </div>

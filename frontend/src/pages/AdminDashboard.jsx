@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+
+// 🟢 1. Import Admin functions
 import {
   getPendingArticles,
   getAllArticles,
@@ -9,8 +11,11 @@ import {
   getPendingNgos,
   updateUserStatus,
   getAllEvents,
-  updateEventStatus, // <--- ADDED THIS IMPORT
+  updateEventStatus,
 } from "../API/AdminAPI";
+
+// 🟢 2. Import the User Fetcher from ProfileAPI (Since it works in ArticleDetail)
+import { getUserById } from "../API/ProfileAPI";
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -34,8 +39,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-slate-800 fredoka">
-      <Toaster position="top-right" />
-
       {/* HEADER */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -52,27 +55,12 @@ export default function AdminDashboard() {
             onClick={handleLogout}
             className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-lg transition-colors"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
             Logout
           </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* MAIN TABS */}
         <div className="flex space-x-4 border-b border-gray-200 mb-6">
           <TabButton
             label="Pending Approvals"
@@ -92,9 +80,7 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* CONTENT AREA */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
-          {/* REQUESTS VIEW */}
           {activeTab === "requests" && (
             <>
               <div className="flex space-x-2 mb-6">
@@ -109,13 +95,11 @@ export default function AdminDashboard() {
                   onClick={() => setSubTab("ngos")}
                 />
               </div>
-
               {subTab === "articles" && <PendingArticlesTable />}
               {subTab === "ngos" && <PendingNgosTable />}
             </>
           )}
 
-          {/* MODERATION VIEW */}
           {activeTab === "moderation" && (
             <>
               <div className="flex space-x-2 mb-6">
@@ -130,7 +114,6 @@ export default function AdminDashboard() {
                   onClick={() => setSubTab("all_events")}
                 />
               </div>
-
               {subTab === "all_articles" && <AllArticlesTable />}
               {subTab === "all_events" && <AllEventsTable />}
             </>
@@ -141,6 +124,7 @@ export default function AdminDashboard() {
   );
 }
 
+// --- HELPER COMPONENTS ---
 function TabButton({ label, isActive, onClick }) {
   return (
     <button
@@ -172,12 +156,62 @@ function SubTabButton({ label, isActive, onClick }) {
   );
 }
 
+function StatusBadge({ status }) {
+  const colors = {
+    Published: "bg-green-100 text-green-800",
+    Approved: "bg-green-100 text-green-800",
+    Active: "bg-green-100 text-green-800",
+    Pending: "bg-yellow-100 text-yellow-800",
+    Rejected: "bg-red-100 text-red-800",
+    Completed: "bg-gray-200 text-gray-600",
+  };
+  return (
+    <span
+      className={`px-2 py-1 rounded text-xs font-bold ${
+        colors[status] || "bg-gray-100"
+      }`}
+    >
+      {status}
+    </span>
+  );
+}
+
+function EmptyState({ message }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-40 text-gray-400">
+      <p>{message}</p>
+    </div>
+  );
+}
+
+// --- PENDING ARTICLES ---
 function PendingArticlesTable() {
   const [articles, setArticles] = useState([]);
+  const [authorNames, setAuthorNames] = useState({});
   const [reviewArticle, setReviewArticle] = useState(null);
 
   useEffect(() => {
-    getPendingArticles().then(setArticles).catch(console.error);
+    getPendingArticles().then(async (data) => {
+      setArticles(data);
+      // Collect IDs
+      const uniqueIds = [...new Set(data.map((a) => a.authorId))];
+
+      const names = {};
+      await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            // 🟢 Fetch using ProfileAPI
+            const u = await getUserById(id);
+            // 🟢 Fallback Logic: Name -> Username -> "Unknown"
+            names[id] = u.name || u.username || "Unknown User";
+          } catch (err) {
+            console.error(`Failed to fetch user ${id}`, err);
+            names[id] = "Unknown ID";
+          }
+        })
+      );
+      setAuthorNames(names);
+    });
   }, []);
 
   const handleDecision = async (id, status) => {
@@ -187,13 +221,13 @@ function PendingArticlesTable() {
     setReviewArticle(null);
   };
 
-  if (articles.length === 0)
-    return <EmptyState message="No pending articles." />;
-
   const stripHtml = (html) => {
     const doc = new DOMParser().parseFromString(html, "text/html");
     return doc.body.textContent || "";
   };
+
+  if (articles.length === 0)
+    return <EmptyState message="No pending articles." />;
 
   return (
     <>
@@ -208,8 +242,9 @@ function PendingArticlesTable() {
                 {article.title}
               </h3>
               <p className="text-xs text-gray-500 mb-2">
-                Submitted by: {article.authorId} •{" "}
-                {new Date(article.publishDate).toLocaleDateString()}
+                Submitted by:{" "}
+                <strong>{authorNames[article.authorId] || "Loading..."}</strong>{" "}
+                • {new Date(article.publishDate).toLocaleDateString()}
               </p>
               <p className="text-gray-600 text-sm line-clamp-2">
                 {stripHtml(article.content)}
@@ -220,26 +255,18 @@ function PendingArticlesTable() {
                 onClick={() => setReviewArticle(article)}
                 className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50"
               >
-                Review Content
+                Review
               </button>
             </div>
           </div>
         ))}
       </div>
 
-      {/* REVIEW MODAL */}
       {reviewArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
             <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">
-                  Review Article
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Review formatting and content before approving.
-                </p>
-              </div>
+              <h2 className="text-xl font-bold text-slate-800">Review</h2>
               <button
                 onClick={() => setReviewArticle(null)}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -250,13 +277,6 @@ function PendingArticlesTable() {
             <div className="p-8 overflow-y-auto flex-1">
               <div className="prose prose-indigo max-w-none">
                 <h1>{reviewArticle.title}</h1>
-                {reviewArticle.coverImageUrl && (
-                  <img
-                    src={reviewArticle.coverImageUrl}
-                    alt="Cover"
-                    className="w-full h-64 object-cover rounded-xl mb-6"
-                  />
-                )}
                 <div
                   dangerouslySetInnerHTML={{ __html: reviewArticle.content }}
                 />
@@ -265,7 +285,7 @@ function PendingArticlesTable() {
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button
                 onClick={() => setReviewArticle(null)}
-                className="px-5 py-2.5 rounded-lg text-red-600 font-bold bg-red-50 hover:bg-red-100 transition-colors"
+                className="px-5 py-2.5 rounded-lg text-gray-600 font-bold bg-gray-100 hover:bg-gray-200"
               >
                 Cancel
               </button>
@@ -273,7 +293,7 @@ function PendingArticlesTable() {
                 onClick={() =>
                   handleDecision(reviewArticle.articleId, "Rejected")
                 }
-                className="px-5 py-2.5 rounded-lg border border-red-200 text-red-600 font-bold hover:bg-red-50 transition-colors"
+                className="px-5 py-2.5 rounded-lg border border-red-200 text-red-600 font-bold hover:bg-red-50"
               >
                 Reject
               </button>
@@ -281,7 +301,7 @@ function PendingArticlesTable() {
                 onClick={() =>
                   handleDecision(reviewArticle.articleId, "Published")
                 }
-                className="px-6 py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 shadow-sm transition-transform hover:-translate-y-0.5"
+                className="px-6 py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700"
               >
                 Approve & Publish
               </button>
@@ -293,6 +313,7 @@ function PendingArticlesTable() {
   );
 }
 
+// --- PENDING NGO TABLE ---
 function PendingNgosTable() {
   const [ngos, setNgos] = useState([]);
   useEffect(() => {
@@ -303,10 +324,10 @@ function PendingNgosTable() {
     try {
       await updateUserStatus(id, status);
       if (status === "Active") toast.success("NGO Approved!");
-      else if (status === "Rejected") toast.success("NGO Rejected & Deleted.");
+      else if (status === "Rejected") toast.success("NGO Rejected.");
       setNgos(ngos.filter((n) => n.id !== id));
     } catch (error) {
-      toast.error("Failed to update status.");
+      toast.error("Failed.");
     }
   };
 
@@ -322,12 +343,14 @@ function PendingNgosTable() {
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600 text-lg">
-              {ngo.name?.[0] || "N"}
+              {/* 🟢 Fallback to Username */}
+              {(ngo.name || ngo.username)?.[0] || "N"}
             </div>
             <div>
-              <h3 className="font-bold text-lg text-indigo-900">{ngo.name}</h3>
+              <h3 className="font-bold text-lg text-indigo-900">
+                {ngo.name || ngo.username}
+              </h3>
               <p className="text-sm text-gray-500">{ngo.email}</p>
-              <p className="text-xs text-gray-400 mt-1">{ngo.contactInfo}</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -350,11 +373,32 @@ function PendingNgosTable() {
   );
 }
 
+// --- ALL ARTICLES ---
 function AllArticlesTable() {
   const [articles, setArticles] = useState([]);
+  const [authorNames, setAuthorNames] = useState({});
+  const [selectedArticle, setSelectedArticle] = useState(null);
+
   useEffect(() => {
-    getAllArticles().then(setArticles).catch(console.error);
+    getAllArticles().then(async (data) => {
+      setArticles(data);
+      const uniqueIds = [...new Set(data.map((a) => a.authorId))];
+      const names = {};
+      await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            // 🟢 Fetch using ProfileAPI
+            const u = await getUserById(id);
+            names[id] = u.name || u.username || "Unknown User";
+          } catch {
+            names[id] = "Unknown ID";
+          }
+        })
+      );
+      setAuthorNames(names);
+    });
   }, []);
+
   const handleDelete = async (id) => {
     if (!window.confirm("Take down article?")) return;
     await updateArticleStatus(id, "Rejected");
@@ -364,48 +408,149 @@ function AllArticlesTable() {
         a.articleId === id ? { ...a, status: "Rejected" } : a
       )
     );
+    setSelectedArticle(null);
   };
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-gray-50 text-gray-500 uppercase">
-          <tr>
-            <th className="px-4 py-3">Title</th>
-            <th className="px-4 py-3">Author</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {articles.map((a) => (
-            <tr key={a.articleId} className="border-b hover:bg-gray-50">
-              <td className="px-4 py-3 font-medium">{a.title}</td>
-              <td className="px-4 py-3 text-gray-500">{a.authorId}</td>
-              <td className="px-4 py-3">
-                <StatusBadge status={a.status} />
-              </td>
-              <td className="px-4 py-3">
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 text-gray-500 uppercase">
+            <tr>
+              <th className="px-4 py-3">Title</th>
+              <th className="px-4 py-3">Author</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {articles.map((a) => (
+              <tr key={a.articleId} className="border-b hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{a.title}</td>
+                <td className="px-4 py-3 text-gray-500">
+                  {authorNames[a.authorId] || "Loading..."}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={a.status} />
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => setSelectedArticle(a)}
+                    className="text-indigo-600 hover:underline font-bold mr-3"
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">
+                  Article Details
+                </h2>
+                <StatusBadge status={selectedArticle.status} />
+              </div>
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto flex-1">
+              <div className="prose prose-indigo max-w-none">
+                <h1>{selectedArticle.title}</h1>
+                <p className="text-sm text-gray-500 mb-6">
+                  By {authorNames[selectedArticle.authorId]}
+                </p>
+                {selectedArticle.coverImageUrl && (
+                  <img
+                    src={selectedArticle.coverImageUrl}
+                    alt="Cover"
+                    className="w-full h-64 object-cover rounded-xl mb-6 shadow-md"
+                  />
+                )}
+                <div
+                  dangerouslySetInnerHTML={{ __html: selectedArticle.content }}
+                />
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedArticle(null)}
+                className="px-5 py-2.5 rounded-lg text-gray-600 font-bold bg-gray-200"
+              >
+                Close
+              </button>
+              {selectedArticle.status !== "Rejected" && (
                 <button
-                  onClick={() => handleDelete(a.articleId)}
-                  className="text-red-600 hover:underline font-medium"
+                  onClick={() => handleDelete(selectedArticle.articleId)}
+                  className="px-5 py-2.5 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700"
                 >
                   Take Down
                 </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-// --- ALL EVENTS TABLE (Uses getAllEvents + updateEventStatus) ---
+// --- ALL EVENTS TABLE ---
 function AllEventsTable() {
   const [events, setEvents] = useState([]);
+  const [organizerNames, setOrganizerNames] = useState({});
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
   useEffect(() => {
-    getAllEvents().then(setEvents).catch(console.error);
+    const fetchData = async () => {
+      try {
+        const eventData = await getAllEvents();
+        setEvents(eventData);
+
+        const allUserIds = [];
+        eventData.forEach((e) => {
+          if (e.ngoId) allUserIds.push(e.ngoId);
+          if (e.createdById) allUserIds.push(e.createdById);
+        });
+
+        const uniqueIds = [...new Set(allUserIds)];
+
+        const names = {};
+        await Promise.all(
+          uniqueIds.map(async (id) => {
+            try {
+              // 🟢 Fetch using ProfileAPI
+              const u = await getUserById(id);
+              // 🟢 Fix: Username fallback
+              names[id] = u.name || u.username || "Unknown User";
+            } catch {
+              names[id] = "Unknown User";
+            }
+          })
+        );
+
+        setOrganizerNames(names);
+      } catch (error) {
+        console.error("Error:", error);
+      }
+    };
+    fetchData();
   }, []);
+
+  const getOrgName = (e) => {
+    const idToLookup = e.ngoId || e.createdById;
+    return organizerNames[idToLookup] || "Loading...";
+  };
 
   const handleFlag = async (id) => {
     if (!window.confirm("Take down event?")) return;
@@ -415,75 +560,129 @@ function AllEventsTable() {
       setEvents(
         events.map((e) => (e.id === id ? { ...e, status: "Rejected" } : e))
       );
-    } catch (err) {
+      setSelectedEvent(null);
+    } catch {
       toast.error("Failed.");
     }
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-gray-50 text-gray-500 uppercase">
-          <tr>
-            <th className="px-4 py-3">Event Title</th>
-            <th className="px-4 py-3">Organizer</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {events.map((e) => (
-            <tr key={e.id} className="border-b hover:bg-gray-50">
-              <td className="px-4 py-3 font-medium">{e.title}</td>
-              <td className="px-4 py-3 text-gray-500">
-                {e.ngoId || e.createdById}
-              </td>
-              <td className="px-4 py-3">
-                <StatusBadge status={e.status} />
-              </td>
-              <td className="px-4 py-3">
-                {e.status !== "Rejected" ? (
-                  <button
-                    onClick={() => handleFlag(e.id)}
-                    className="text-red-600 hover:underline font-medium"
-                  >
-                    Flag
-                  </button>
-                ) : (
-                  <span className="text-gray-400">Taken Down</span>
-                )}
-              </td>
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 text-gray-500 uppercase">
+            <tr>
+              <th className="px-4 py-3">Event Title</th>
+              <th className="px-4 py-3">Organizer</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+          </thead>
+          <tbody>
+            {events.map((e) => (
+              <tr key={e.id} className="border-b hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{e.title}</td>
+                <td className="px-4 py-3 text-gray-500">{getOrgName(e)}</td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={e.status} />
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => setSelectedEvent(e)}
+                    className="text-indigo-600 hover:underline font-bold mr-3"
+                  >
+                    View
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-function EmptyState({ message }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-      <p>{message}</p>
-    </div>
-  );
-}
-function StatusBadge({ status }) {
-  const colors = {
-    Published: "bg-green-100 text-green-800",
-    Approved: "bg-green-100 text-green-800",
-    Active: "bg-green-100 text-green-800",
-    Pending: "bg-yellow-100 text-yellow-800",
-    Rejected: "bg-red-100 text-red-800",
-    Completed: "bg-gray-200 text-gray-600",
-  };
-  return (
-    <span
-      className={`px-2 py-1 rounded text-xs font-bold ${
-        colors[status] || "bg-gray-100"
-      }`}
-    >
-      {status}
-    </span>
+      {selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">
+                  Event Details
+                </h2>
+                <StatusBadge status={selectedEvent.status} />
+              </div>
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto flex-1">
+              <h1 className="text-3xl font-bold text-indigo-900 mb-2">
+                {selectedEvent.title}
+              </h1>
+              <div className="flex flex-col gap-4 text-sm text-gray-600 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div className="flex justify-between border-b pb-2">
+                  <span className="font-bold">Date:</span>
+                  <span>
+                    {new Date(selectedEvent.eventDate).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="font-bold">Location:</span>
+                  <span>{selectedEvent.location}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold">Organizer:</span>
+                  <span>{getOrgName(selectedEvent)}</span>
+                </div>
+              </div>
+              <h3 className="font-bold text-lg mb-2">Description</h3>
+              <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                {selectedEvent.description}
+              </p>
+              {selectedEvent.documents &&
+                selectedEvent.documents.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-bold text-sm text-gray-500 uppercase mb-2">
+                      Attached Documents
+                    </h4>
+                    <ul className="list-disc pl-5 text-indigo-600">
+                      {selectedEvent.documents.map((doc, idx) => (
+                        <li key={idx}>
+                          <a
+                            href={doc}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:underline"
+                          >
+                            Document {idx + 1}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+            </div>
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="px-5 py-2.5 rounded-lg text-gray-600 font-bold bg-gray-200"
+              >
+                Close
+              </button>
+              {selectedEvent.status !== "Rejected" && (
+                <button
+                  onClick={() => handleFlag(selectedEvent.id)}
+                  className="px-5 py-2.5 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700"
+                >
+                  Take Down Event
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -34,7 +34,7 @@ export default function Volunteer() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 fredoka pb-12">
+    <div className="min-h-screen bg-gray-100 fredoka pb-12">
       <Toaster position="top-right" />
       {loading && <LoadingScreen />}
 

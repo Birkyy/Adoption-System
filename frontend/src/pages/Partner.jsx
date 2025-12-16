@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { requestNgoAccount } from "../API/AuthAPI";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function Partner() {
   const navigate = useNavigate();
@@ -79,9 +79,7 @@ export default function Partner() {
   };
 
   return (
-    <div className="min-h-screen bg-amber-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 fredoka">
-      <Toaster position="top-center" />
-
+    <div className="min-h-screen bg-[#d5a07d] flex items-center justify-center pb-12 px-4 sm:pb-6 lg:px-8 fredoka">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white shadow-2xl rounded-3xl overflow-hidden">
         {/* LEFT: Info & Visuals */}
         <div className="bg-[#009e8c] text-white p-10 flex flex-col justify-center relative overflow-hidden">

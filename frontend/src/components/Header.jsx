@@ -10,20 +10,17 @@ function Header({ overlay = false }) {
 
   // Logic: We want a solid background and dark text for these specific pages
   // instead of the transparent white text used on the Home slider.
-  const isAlternatePage = [
-    "/partner",
-    "/adopt",
-    "/event",
-    "/volunteer",
-  ].includes(location.pathname);
+  const isAlternatePage =
+    ["/partner", "/adopt", "/event"].includes(location.pathname) ||
+    location.pathname.startsWith("/pet/") ||
+    location.pathname.startsWith("/adopt/apply/") ||
+    location.pathname.startsWith("/event") ||
+    location.pathname.startsWith("/article/");
 
-  const isArticlePage = ["/article"].includes(location.pathname);
-
-  // --- Color Logic ---
+  const isArticlePage = ["/article", "/volunteer"].includes(location.pathname);
   const getTextColor = () => {
     if (isAlternatePage) return "text-white";
-
-    // Home Page Slider Logic
+    if (isArticlePage) return "text-white";
     switch (currentSlideIndex) {
       case 0:
       case 1:
@@ -35,7 +32,8 @@ function Header({ overlay = false }) {
   };
 
   const getHoverColor = () => {
-    if (isAlternatePage) return "hover:text-[#009e8c]"; // Teal hover
+    if (isAlternatePage) return "hover:text-[hsl(24,51%,46%)]";
+    if (isArticlePage) return "hover:text-[hsl(38,51%,60%)]";
 
     switch (currentSlideIndex) {
       case 0:
@@ -50,8 +48,8 @@ function Header({ overlay = false }) {
   };
 
   const getBackgroundColor = () => {
-    // Matches the warm/light background of your content pages
     if (isAlternatePage) return "bg-[#d5a07d]";
+    if (isArticlePage) return "bg-[hsl(166,100%,15%)]";
     return "bg-transparent";
   };
 

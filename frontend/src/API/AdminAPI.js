@@ -40,3 +40,10 @@ export const updateEventStatus = async (id, status) => {
   const res = await axios.put(`${API_URL}/Events/admin/status/${id}?status=${status}`);
   return res.data;
 };
+
+// Add this to your AdminAPI.js or UserAPI.js
+export const getUserById = async (id) => {
+  // Matches your backend: [HttpGet("{id:length(24)}")]
+  const response = await axios.get(`${BASE_URL}/users/${id}`); 
+  return response.data;
+};

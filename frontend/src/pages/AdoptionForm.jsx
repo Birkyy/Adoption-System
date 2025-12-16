@@ -3,11 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getPetById } from "../API/PetAPI";
 import { submitAdoptionApplication } from "../API/AdoptionAPI";
 import { useAuth } from "../contexts/AuthContext";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import LoadingScreen from "../components/LoadingScreen";
 
 export default function AdoptionForm() {
-  const { id } = useParams(); // Pet ID from URL
+  const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -15,11 +15,9 @@ export default function AdoptionForm() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form State
   const [message, setMessage] = useState("");
   const [agreed, setAgreed] = useState(false);
 
-  // 1. Fetch Pet Details on Mount
   useEffect(() => {
     if (!user) {
       toast.error("You must be logged in to adopt.");
@@ -41,7 +39,6 @@ export default function AdoptionForm() {
     fetchPet();
   }, [id, user, navigate]);
 
-  // 2. Handle Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!agreed) {
@@ -54,8 +51,6 @@ export default function AdoptionForm() {
     const payload = {
       petId: pet.petId || pet.id,
       applicantId: user.id,
-      // --- FIX: Send the NgoId ---
-      // Even though backend can find it, the model validation requires it to be present in the request
       ngoId: pet.ngoId,
       message: message,
     };
@@ -63,13 +58,10 @@ export default function AdoptionForm() {
     try {
       await submitAdoptionApplication(payload);
       toast.success("Application submitted successfully!");
-
-      // Redirect to home or a success page after a delay
       setTimeout(() => navigate("/"), 2000);
     } catch (error) {
       console.error(error);
       if (error.response && error.response.data && error.response.data.errors) {
-        // If backend returns validation errors (like Missing NgoId), show them
         const errorMsg = JSON.stringify(error.response.data.errors);
         toast.error(`Validation Error: ${errorMsg}`);
       } else if (error.response && error.response.data) {
@@ -85,36 +77,33 @@ export default function AdoptionForm() {
   if (loading) return <LoadingScreen />;
   if (!pet) return null;
 
-  // Fallback image logic
   const petImage =
     pet.photos && pet.photos.length > 0
       ? pet.photos[0]
       : pet.imageUrl || "https://via.placeholder.com/150";
 
   return (
-    <div className="min-h-screen bg-amber-50 py-12 px-4 sm:px-6 lg:px-8 fredoka">
-      <Toaster position="top-center" />
-
-      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-5">
+    <div className="min-h-screen bg-[#d5a07d] pb-12 px-4 sm:px-6 lg:px-8 fredoka">
+      <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2">
         {/* LEFT: Pet Preview */}
-        <div className="md:col-span-2 bg-indigo-50 relative">
+        <div className="bg-indigo-50 relative h-64 md:h-auto">
           <img
             src={petImage}
             alt={pet.name}
-            className="w-full h-64 md:h-full object-cover"
+            className="w-full h-full object-cover absolute inset-0"
           />
-          <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/70 to-transparent p-6">
-            <h2 className="text-3xl font-bold text-white font-gloria">
+          <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-8">
+            <h2 className="text-4xl font-bold text-white font-gloria drop-shadow-md">
               {pet.name}
             </h2>
-            <p className="text-white/90 font-medium">
+            <p className="text-white/90 font-medium text-lg">
               {pet.breed} • {pet.age} yrs
             </p>
           </div>
         </div>
 
         {/* RIGHT: Form */}
-        <div className="md:col-span-3 p-8 md:p-12">
+        <div className="p-8 md:p-12">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-slate-800 mb-2">
               Adoption Application
@@ -126,7 +115,7 @@ export default function AdoptionForm() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Read-Only Applicant Info */}
+            {/* Applicant Info */}
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
               <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
                 Applicant
@@ -142,7 +131,7 @@ export default function AdoptionForm() {
               </label>
               <textarea
                 required
-                rows="4"
+                rows="5"
                 placeholder="Tell us about your home, experience with pets, and why you are a great match..."
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#009e8c] focus:border-transparent outline-none transition-all resize-none"
                 value={message}
@@ -150,7 +139,7 @@ export default function AdoptionForm() {
               ></textarea>
             </div>
 
-            {/* Terms Checkbox */}
+            {/* Terms */}
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
@@ -174,7 +163,8 @@ export default function AdoptionForm() {
               <button
                 type="button"
                 onClick={() => navigate(-1)}
-                className="flex-1 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
+                // 🟢 UPDATE: Pastel Red Style
+                className="flex-1 px-6 py-3 rounded-xl bg-red-100 text-red-800 font-bold hover:bg-red-200 transition-colors"
               >
                 Cancel
               </button>

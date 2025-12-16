@@ -4,6 +4,7 @@ import { loginUser } from "../API/AuthAPI";
 import { useAuth } from "../contexts/AuthContext"; // <--- 1. Import the Hook
 import Dog from "../assets/images/welcoming-dog.png";
 import Food from "../assets/images/pet-food.png";
+import toast from "react-hot-toast";
 
 function SignIn() {
   const navigate = useNavigate();

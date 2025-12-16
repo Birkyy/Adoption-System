@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getPetById, updatePet } from "../API/PetAPI"; // Import updatePet
+import { getPetById, updatePet } from "../API/PetAPI";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function PetDetail() {
   const { id } = useParams();
@@ -22,14 +22,12 @@ export default function PetDetail() {
     try {
       const data = await getPetById(id);
       setPet(data);
-      // Determine active image
       const firstImg =
         data.photos && data.photos.length > 0
           ? data.photos[0]
           : data.imageUrl || "https://via.placeholder.com/400";
       setActiveImage(firstImg);
 
-      // Initialize Edit Form
       setEditForm({
         name: data.name,
         species: data.species,
@@ -38,7 +36,7 @@ export default function PetDetail() {
         gender: data.gender,
         description: data.description,
         status: data.status,
-        imageUrl: data.imageUrl, // Editing main image for simplicity
+        imageUrl: data.imageUrl,
       });
     } catch (error) {
       toast.error("Failed to load pet details.");
@@ -65,7 +63,6 @@ export default function PetDetail() {
     navigate(`/adopt/apply/${pet.petId || pet.id}`);
   };
 
-  // --- EDIT HANDLERS ---
   const isOwner = user && pet && user.id === pet.ngoId;
 
   const handleUpdate = async (e) => {
@@ -74,7 +71,7 @@ export default function PetDetail() {
       await updatePet(id, editForm, user.id);
       toast.success("Pet details updated!");
       setShowEdit(false);
-      fetchPet(); // Refresh data
+      fetchPet();
     } catch (error) {
       console.error(error);
       toast.error("Failed to update pet.");
@@ -100,27 +97,30 @@ export default function PetDetail() {
     );
 
   return (
-    <div className="min-h-screen bg-amber-50 py-12 px-4 sm:px-6 lg:px-8 fredoka">
-      <Toaster position="top-center" />
-
-      <div className="max-w-7xl mx-auto mb-6 flex justify-between items-center">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-slate-500 hover:text-[#009e8c] font-medium flex items-center gap-2 transition-colors"
-        >
-          ← Back
-        </button>
-        {isOwner && (
+    // Added pt-12 here to create space at the top since we moved the header inside
+    <div className="min-h-screen bg-[#d5a07d] pb-12 px-4 sm:px-6 lg:px-8 fredoka">
+      {/* 🟢 CARD CONTAINER */}
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 bg-white p-6 md:p-10 rounded-3xl shadow-xl">
+        {/* 🟢 NEW HEADER SECTION INSIDE CARD (Back & Edit Buttons) */}
+        {/* col-span-full makes it span the entire width of the grid */}
+        <div className="col-span-full flex justify-between items-center border-b border-gray-100">
           <button
-            onClick={() => setShowEdit(true)}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors"
+            onClick={() => navigate(-1)}
+            className="text-slate-500 hover:text-[#009e8c] font-bold text-lg flex items-center gap-2 transition-colors"
           >
-            Edit Pet Details
+            ← Back
           </button>
-        )}
-      </div>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 bg-white p-6 md:p-10 rounded-3xl shadow-xl">
+          {isOwner && (
+            <button
+              onClick={() => setShowEdit(true)}
+              className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors text-sm"
+            >
+              Edit Details
+            </button>
+          )}
+        </div>
+
         {/* LEFT: Image Gallery */}
         <div className="space-y-4">
           <div className="w-full h-96 md:h-[500px] rounded-2xl overflow-hidden bg-gray-100 relative shadow-inner">
@@ -177,13 +177,6 @@ export default function PetDetail() {
             <InfoBadge label="Gender" value={pet.gender} icon="⚤" />
             <InfoBadge label="Species" value={pet.species} icon="🐾" />
             <InfoBadge label="Age" value={pet.age} icon="🎂" />
-            <InfoBadge
-              label="ID"
-              value={`#${(pet.petId || pet.id)?.substring(
-                (pet.petId || pet.id).length - 6
-              )}`}
-              icon="🆔"
-            />
           </div>
 
           <div className="prose text-slate-600 leading-relaxed mb-8">

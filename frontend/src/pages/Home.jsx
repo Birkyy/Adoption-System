@@ -301,60 +301,55 @@ function Home() {
               Ready to be the Hero?
             </h1>
 
-            {/* 🟢 CARDS CONTAINER: items-stretch forces equal height, gap-10/20 adds spacing */}
+            {/* 🟢 CARDS CONTAINER */}
             <div className="flex flex-col lg:flex-row gap-10 lg:gap-20 w-full justify-center items-stretch px-4">
               {/* Card 1: Event */}
-              <div
-                onClick={() => navigate("/event")}
-                className="flex-1 flex flex-col bg-red-300 rounded-3xl p-8 lg:p-12 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer min-h-[20h0px]"
-              >
-                {/* Image Area - Centered */}
-                <div className="flex-1 flex items-center justify-center mb-6">
-                  <img
-                    src={Event}
-                    alt="Event"
-                    className="h-16 md:h-48 object-contain"
-                  />
+              {/* Added 'flex-1 w-full' to ensure it takes equal width in the flex container */}
+              <NavLink to="/event" className="flex-1 w-full flex">
+                <div className="w-full flex flex-col bg-red-300 rounded-3xl p-8 lg:p-12 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer min-h-[400px]">
+                  <div className="flex-1 flex items-center justify-center mb-6">
+                    <img
+                      src={Event}
+                      alt="Event"
+                      className="h-24 md:h-48 object-contain" // Fixed height for consistency
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 text-center">
+                    <h1 className="text-2xl md:text-3xl xl:text-4xl font-extrabold gloria text-slate-900">
+                      Be the Hero in Event!
+                    </h1>
+                    <p className="text-sm md:text-base fredoka font-medium text-slate-800 leading-relaxed">
+                      There are various events for you to join including
+                      campaigns, one-day volunteer, charity bazaar, etc.
+                    </p>
+                  </div>
                 </div>
-                {/* Text Area */}
-                <div className="flex flex-col gap-3 text-center">
-                  <h1 className="text-2xl md:text-3xl xl:text-4xl font-extrabold gloria text-slate-900">
-                    Be the Hero in Event!
-                  </h1>
-                  <p className="text-sm md:text-base fredoka font-medium text-slate-800 leading-relaxed">
-                    There are various events for you to join including
-                    campaigns, one-day volunteer, charity bazaar, etc.
-                  </p>
-                </div>
-              </div>
+              </NavLink>
 
               {/* Card 2: Shelter */}
-              <div
-                onClick={() => navigate("/volunteer")}
-                className="flex-1 flex flex-col bg-amber-200 rounded-3xl p-8 lg:p-12 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer min-h-[200px]"
-              >
-                {/* Image Area - Centered */}
-                <div className="flex-1 flex items-center justify-center mb-6">
-                  <img
-                    src={Volunteer}
-                    alt="Shelter"
-                    className="h-16 md:h-48 object-contain"
-                  />
+              {/* Added 'flex-1 w-full' here too */}
+              <NavLink to="/volunteer" className="flex-1 w-full flex">
+                <div className="w-full flex flex-col bg-amber-200 rounded-3xl p-8 lg:p-12 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer min-h-[400px]">
+                  <div className="flex-1 flex items-center justify-center mb-6">
+                    <img
+                      src={Volunteer}
+                      alt="Shelter"
+                      className="h-24 md:h-48 object-contain"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 text-center">
+                    <h1 className="text-2xl md:text-3xl xl:text-4xl font-extrabold gloria text-slate-900">
+                      Be the Hero in Shelter!
+                    </h1>
+                    <p className="text-sm md:text-base fredoka font-medium text-slate-800 leading-relaxed">
+                      In here, you can feed, bath and play with the animal!
+                    </p>
+                  </div>
                 </div>
-                {/* Text Area */}
-                <div className="flex flex-col gap-3 text-center">
-                  <h1 className="text-2xl md:text-3xl xl:text-4xl font-extrabold gloria text-slate-900">
-                    Be the Hero in Shelter!
-                  </h1>
-                  <p className="text-sm md:text-base fredoka font-medium text-slate-800 leading-relaxed">
-                    In here, you can feed, bath and play with the animal!
-                  </p>
-                </div>
-              </div>
+              </NavLink>
             </div>
           </div>
 
-          {/* 🐱 YOUR CAT PHOTO (Kept exactly as requested) */}
           <img
             src={PeekingCat2}
             alt=""
