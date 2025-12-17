@@ -18,6 +18,15 @@ builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Get the key from configuration
+        var jwtKey = builder.Configuration["JwtSettings:Key"];
+
+        // Safety check: if key is null on the server, it won't crash immediately
+        // but you should set "JwtSettings__Key" in MonsterASP as well.
+        var keyBytes = Encoding.UTF8.GetBytes(
+            jwtKey ?? "temporary_development_key_32_characters_long"
+        );
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -26,9 +35,7 @@ builder
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
             ValidAudience = builder.Configuration["JwtSettings:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Key"]!)
-            ),
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
         };
     });
 
