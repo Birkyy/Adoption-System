@@ -54,8 +54,9 @@ export default function EventDetail() {
         eventDate: data.eventDate,
         location: data.location,
         imageUrl: data.imageUrl,
-        // 🟢 FIX: Include the organizer's ID in the form state
         createdById: data.createdById,
+        // 🟢 FIX: Store existing participants in the edit state
+        participantIds: data.participantIds || [],
       });
       if (data.createdById) {
         try {
@@ -81,27 +82,20 @@ export default function EventDetail() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // 🟢 FIX: Spread editForm and ensure createdById is definitely there
     const updatedPayload = {
       ...editForm,
-      createdById: event.createdById, // Safety fallback
-      eventDate: new Date(editForm.eventDate).toISOString(), // Ensure valid date format
+      // 🟢 FIX: Ensure participants are not lost during the update
+      participantIds: event.participantIds || [],
+      eventDate: new Date(editForm.eventDate).toISOString(),
     };
 
     try {
-      // Your PetAPI.js 'updateEvent' expects (id, petData, userId)
       await updateEvent(id, updatedPayload, user.id);
-      toast.success("Event updated successfully!");
+      toast.success("Event updated!");
       setShowEdit(false);
-      fetchEvent();
+      fetchEvent(); // This refreshes the UI and brings back the "You are going" badge
     } catch (error) {
-      // Improved debugging: shows the specific field error in a toast
-      const errorData = error.response?.data?.errors;
-      const firstError = errorData
-        ? Object.values(errorData)[0][0]
-        : "Update failed";
-      toast.error(firstError);
-      console.error("Validation Error:", error.response?.data);
+      toast.error("Update failed.");
     } finally {
       setIsSubmitting(false);
     }
