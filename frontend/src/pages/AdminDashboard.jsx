@@ -316,6 +316,8 @@ function PendingArticlesTable() {
 // --- PENDING NGO TABLE ---
 function PendingNgosTable() {
   const [ngos, setNgos] = useState([]);
+  const [selectedNgo, setSelectedNgo] = useState(null); // 🟢 State for the modal
+
   useEffect(() => {
     getPendingNgos().then(setNgos).catch(console.error);
   }, []);
@@ -323,11 +325,11 @@ function PendingNgosTable() {
   const handleDecision = async (id, status) => {
     try {
       await updateUserStatus(id, status);
-      if (status === "Active") toast.success("NGO Approved!");
-      else if (status === "Rejected") toast.success("NGO Rejected.");
+      toast.success(status === "Active" ? "NGO Approved!" : "NGO Rejected.");
       setNgos(ngos.filter((n) => n.id !== id));
+      setSelectedNgo(null); // Close modal on decision
     } catch (error) {
-      toast.error("Failed.");
+      toast.error("Failed to update status.");
     }
   };
 
@@ -335,41 +337,116 @@ function PendingNgosTable() {
     return <EmptyState message="No pending NGO requests." />;
 
   return (
-    <div className="grid gap-4">
-      {ngos.map((ngo) => (
-        <div
-          key={ngo.id}
-          className="border rounded-lg p-4 flex justify-between items-center"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600 text-lg">
-              {/* 🟢 Fallback to Username */}
-              {(ngo.name || ngo.username)?.[0] || "N"}
+    <>
+      <div className="grid gap-4">
+        {ngos.map((ngo) => (
+          <div
+            key={ngo.id}
+            className="border rounded-lg p-4 flex justify-between items-center hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600 text-lg">
+                {(ngo.name || ngo.username)?.[0] || "N"}
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-indigo-900">
+                  {ngo.name || ngo.username}
+                </h3>
+                <p className="text-sm text-gray-500">{ngo.email}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-lg text-indigo-900">
-                {ngo.name || ngo.username}
-              </h3>
-              <p className="text-sm text-gray-500">{ngo.email}</p>
-            </div>
+            {/* 🟢 Added Review Button */}
+            <button
+              onClick={() => setSelectedNgo(ngo)}
+              className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50"
+            >
+              Review Details
+            </button>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleDecision(ngo.id, "Active")}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700"
-            >
-              Approve
-            </button>
-            <button
-              onClick={() => handleDecision(ngo.id, "Rejected")}
-              className="px-4 py-2 bg-red-100 text-red-600 text-sm font-bold rounded-lg hover:bg-red-200 border border-red-200"
-            >
-              Reject
-            </button>
+        ))}
+      </div>
+
+      {/* 🟢 NGO REVIEW MODAL */}
+      {selectedNgo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-fadeIn">
+            <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
+              <h2 className="text-xl font-bold">NGO Application Review</h2>
+              <button onClick={() => setSelectedNgo(null)} className="text-2xl">
+                &times;
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                  Organization Name
+                </label>
+                <p className="text-lg font-semibold text-slate-800">
+                  {selectedNgo.name}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                  Official Address
+                </label>
+                <p className="text-slate-700 bg-gray-50 p-3 rounded-lg border border-gray-100 italic">
+                  {selectedNgo.address || "No address provided."}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                  About / Mission Statement
+                </label>
+                <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+                  {selectedNgo.bio || "No description provided."}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                    Email
+                  </label>
+                  <p className="text-sm font-medium">{selectedNgo.email}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">
+                    Contact No.
+                  </label>
+                  <p className="text-sm font-medium">
+                    {selectedNgo.contactInfo || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedNgo(null)}
+                className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDecision(selectedNgo.id, "Rejected")}
+                className="px-5 py-2.5 border border-red-200 text-red-600 font-bold hover:bg-red-50 rounded-lg"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => handleDecision(selectedNgo.id, "Active")}
+                className="px-6 py-2.5 bg-green-600 text-white font-bold hover:bg-green-700 rounded-lg shadow-md"
+              >
+                Approve NGO
+              </button>
+            </div>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }
 
