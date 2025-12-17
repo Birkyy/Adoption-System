@@ -5,6 +5,18 @@ import { useAuth } from "../contexts/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
 import toast from "react-hot-toast";
 
+// --- SHARED SPINNER ---
+function Spinner({ size = "md" }) {
+  const sizes = { sm: "h-4 w-4", md: "h-8 w-8", lg: "h-12 w-12" };
+  return (
+    <div className="flex justify-center items-center p-2">
+      <div
+        className={`${sizes[size]} animate-spin rounded-full border-4 border-teal-100 border-t-[#009e8c]`}
+      ></div>
+    </div>
+  );
+}
+
 export default function PetDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -16,18 +28,32 @@ export default function PetDetail() {
 
   // Edit State
   const [showEdit, setShowEdit] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // 🟢 For button feedback
+  const [editForm, setEditForm] = useState({
+    name: "",
+    species: "Dog",
+    breed: "",
+    age: "",
+    gender: "Male",
+    description: "",
+    status: "Available",
+    photos: [], // 🟢 Track the array for editing
+    imageUrl: "",
+  });
 
   const fetchPet = async () => {
     try {
       const data = await getPetById(id);
       setPet(data);
+
       const firstImg =
         data.photos && data.photos.length > 0
           ? data.photos[0]
           : data.imageUrl || "https://via.placeholder.com/400";
+
       setActiveImage(firstImg);
 
+      // Initialize Edit Form with existing data
       setEditForm({
         name: data.name,
         species: data.species,
@@ -36,6 +62,7 @@ export default function PetDetail() {
         gender: data.gender,
         description: data.description,
         status: data.status,
+        photos: data.photos || [], // 🟢 Sync full photo list
         imageUrl: data.imageUrl,
       });
     } catch (error) {
@@ -49,6 +76,62 @@ export default function PetDetail() {
   useEffect(() => {
     fetchPet();
   }, [id]);
+
+  // 🟢 Image Management for Edit Modal
+  const handleEditImages = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter((file) => file.size <= 2 * 1024 * 1024);
+
+    if (validFiles.length < files.length) {
+      toast.error("Some images were skipped (Max 2MB).");
+    }
+
+    const promises = validFiles.map((file) => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(promises).then((newImages) => {
+      setEditForm((prev) => ({
+        ...prev,
+        photos: [...prev.photos, ...newImages], // Append new photos to the list
+      }));
+    });
+  };
+
+  const removePhotoFromEdit = (indexToRemove) => {
+    setEditForm((prev) => ({
+      ...prev,
+      photos: prev.photos.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    // 🟢 Synchronize thumbnail (imageUrl) with the first photo in the array
+    const updatedPayload = {
+      ...editForm,
+      imageUrl:
+        editForm.photos.length > 0 ? editForm.photos[0] : editForm.imageUrl,
+    };
+
+    try {
+      // Calling updatePet as defined in your PetAPI.js
+      await updatePet(id, updatedPayload, user.id);
+      toast.success("Pet details updated!");
+      setShowEdit(false);
+      fetchPet(); // Refresh the main view
+    } catch (error) {
+      toast.error("Failed to update pet.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleAdoptClick = () => {
     if (!user) {
@@ -65,29 +148,6 @@ export default function PetDetail() {
 
   const isOwner = user && pet && user.id === pet.ngoId;
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    try {
-      await updatePet(id, editForm, user.id);
-      toast.success("Pet details updated!");
-      setShowEdit(false);
-      fetchPet();
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to update pet.");
-    }
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) return toast.error("Max 2MB.");
-    const reader = new FileReader();
-    reader.onload = (ev) =>
-      setEditForm({ ...editForm, imageUrl: ev.target.result });
-    reader.readAsDataURL(file);
-  };
-
   if (loading) return <LoadingScreen />;
   if (!pet)
     return (
@@ -97,13 +157,10 @@ export default function PetDetail() {
     );
 
   return (
-    // Added pt-12 here to create space at the top since we moved the header inside
     <div className="min-h-screen bg-[#d5a07d] pb-12 px-4 sm:px-6 lg:px-8 fredoka">
-      {/* 🟢 CARD CONTAINER */}
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 bg-white p-6 md:p-10 rounded-3xl shadow-xl">
-        {/* 🟢 NEW HEADER SECTION INSIDE CARD (Back & Edit Buttons) */}
-        {/* col-span-full makes it span the entire width of the grid */}
-        <div className="col-span-full flex justify-between items-center border-b border-gray-100">
+        {/* HEADER SECTION INSIDE CARD */}
+        <div className="col-span-full flex justify-between items-center border-b border-gray-100 mb-4 pb-4">
           <button
             onClick={() => navigate(-1)}
             className="text-slate-500 hover:text-[#009e8c] font-bold text-lg flex items-center gap-2 transition-colors"
@@ -116,7 +173,7 @@ export default function PetDetail() {
               onClick={() => setShowEdit(true)}
               className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-colors text-sm"
             >
-              Edit Details
+              Edit Pet Profile
             </button>
           )}
         </div>
@@ -139,44 +196,39 @@ export default function PetDetail() {
               {pet.status}
             </span>
           </div>
-          {pet.photos && pet.photos.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {pet.photos.map((photo, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setActiveImage(photo)}
-                  className={`w-20 h-20 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                    activeImage === photo
-                      ? "border-[#009e8c] scale-105"
-                      : "border-transparent opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <img
-                    src={photo}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {pet.photos?.map((photo, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveImage(photo)}
+                className={`w-20 h-20 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                  activeImage === photo
+                    ? "border-[#009e8c] scale-105"
+                    : "border-transparent opacity-70 hover:opacity-100"
+                }`}
+              >
+                <img
+                  src={photo}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* RIGHT: Details */}
         <div className="flex flex-col justify-center">
-          <div className="mb-6">
-            <h1 className="text-4xl md:text-5xl font-bold text-slate-800 mb-2 font-gloria">
-              {pet.name}
-            </h1>
-            <p className="text-xl text-slate-500 font-medium">
-              {pet.breed} • {pet.age}
-            </p>
-          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-800 mb-2 font-gloria">
+            {pet.name}
+          </h1>
+          <p className="text-xl text-slate-500 font-medium mb-6">
+            {pet.breed} • {pet.age}
+          </p>
 
           <div className="grid grid-cols-2 gap-4 mb-8">
             <InfoBadge label="Gender" value={pet.gender} icon="⚤" />
             <InfoBadge label="Species" value={pet.species} icon="🐾" />
-            <InfoBadge label="Age" value={pet.age} icon="🎂" />
           </div>
 
           <div className="prose text-slate-600 leading-relaxed mb-8">
@@ -188,14 +240,13 @@ export default function PetDetail() {
             </p>
           </div>
 
-          {/* Action Button */}
           {!isOwner && (
             <button
               onClick={handleAdoptClick}
               disabled={pet.status !== "Available"}
               className={`w-full py-4 rounded-xl text-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 ${
                 pet.status === "Available"
-                  ? "bg-[#009e8c] hover:bg-teal-700 hover:shadow-teal-200 cursor-pointer"
+                  ? "bg-[#009e8c] hover:bg-teal-700 shadow-teal-200 cursor-pointer"
                   : "bg-gray-400 cursor-not-allowed"
               }`}
             >
@@ -208,9 +259,11 @@ export default function PetDetail() {
       {/* EDIT MODAL */}
       {showEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 animate-fadeIn max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-slate-800">Edit Pet</h2>
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 animate-fadeIn max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-800">
+                Edit Pet Profile
+              </h2>
               <button
                 onClick={() => setShowEdit(false)}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -218,7 +271,40 @@ export default function PetDetail() {
                 &times;
               </button>
             </div>
-            <form onSubmit={handleUpdate} className="space-y-4">
+
+            <form onSubmit={handleUpdate} className="space-y-6">
+              {/* Photo Management Section */}
+              <div className="bg-slate-50 p-4 rounded-xl border">
+                <label className="block text-sm font-bold text-slate-700 mb-3">
+                  Gallery Management
+                </label>
+                <div className="flex gap-2 overflow-x-auto pb-4 mb-4">
+                  {editForm.photos?.map((p, idx) => (
+                    <div key={idx} className="relative shrink-0">
+                      <img
+                        src={p}
+                        className="w-20 h-20 object-cover rounded-lg border bg-white"
+                        alt=""
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhotoFromEdit(idx)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 text-xs flex items-center justify-center shadow-lg border-2 border-white"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleEditImages}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <input
                   className="p-3 border rounded-lg"
@@ -238,6 +324,7 @@ export default function PetDetail() {
                   }
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <input
                   className="p-3 border rounded-lg"
@@ -260,20 +347,10 @@ export default function PetDetail() {
                   <option value="Pending">Pending</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">
-                  Update Main Photo
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="block w-full text-sm text-slate-500"
-                />
-              </div>
+
               <textarea
                 className="w-full p-3 border rounded-lg h-32"
-                placeholder="Description"
+                placeholder="Tell us more about this pet..."
                 value={editForm.description}
                 onChange={(e) =>
                   setEditForm({ ...editForm, description: e.target.value })
@@ -282,9 +359,10 @@ export default function PetDetail() {
 
               <button
                 type="submit"
-                className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700"
+                disabled={isSubmitting}
+                className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-70"
               >
-                Save Changes
+                {isSubmitting ? <Spinner size="sm" /> : "Save Changes"}
               </button>
             </form>
           </div>
@@ -296,11 +374,15 @@ export default function PetDetail() {
 
 function InfoBadge({ label, value, icon }) {
   return (
-    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center gap-3">
-      <span className="text-2xl">{icon}</span>
+    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center gap-4">
+      <span className="text-3xl bg-white w-12 h-12 flex items-center justify-center rounded-xl shadow-sm">
+        {icon}
+      </span>
       <div>
-        <p className="text-xs text-slate-400 uppercase font-bold">{label}</p>
-        <p className="text-slate-700 font-semibold">{value}</p>
+        <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">
+          {label}
+        </p>
+        <p className="text-slate-700 font-bold text-lg">{value}</p>
       </div>
     </div>
   );
