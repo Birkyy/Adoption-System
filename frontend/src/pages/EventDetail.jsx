@@ -240,7 +240,6 @@ export default function EventDetail() {
               Edit Event
             </h2>
             <form onSubmit={handleUpdate} className="space-y-4">
-              form onSubmit={handleUpdate} className="space-y-4">
               {/* 🟢 Image Preview in Modal */}
               <div className="relative w-full h-40 bg-gray-100 rounded-xl overflow-hidden mb-4 border border-dashed border-gray-300">
                 {editForm.imageUrl ? (
