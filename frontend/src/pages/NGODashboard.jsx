@@ -935,8 +935,19 @@ function ArticlesManager({ user }) {
           <p className="text-xs text-gray-500">
             Note: New articles are set to "Pending" until approved by an Admin.
           </p>
-          <button type="submit" disabled={processing}>
-            {processing ? "Submitting..." : "Submit for Review"}
+          <button
+            type="submit"
+            disabled={processing}
+            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {processing ? (
+              <>
+                <Spinner size="sm" />
+                <span>Publishing Article...</span>
+              </>
+            ) : (
+              "Submit for Review"
+            )}
           </button>
         </form>
       )}
@@ -987,10 +998,10 @@ function ArticlesManager({ user }) {
 
 function VolunteerManager({ user }) {
   const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true); // 🟢 Initial load
-  const [modalLoading, setModalLoading] = useState(false); // 🟢 Modal Spinner
-  const [processingId, setProcessingId] = useState(null); // 🟢 For Delete feedback
-  const [isSubmitting, setIsSubmitting] = useState(false); // 🟢 For Create feedback
+  const [loading, setLoading] = useState(true);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const [newListing, setNewListing] = useState({
@@ -1003,28 +1014,29 @@ function VolunteerManager({ user }) {
   const [selectedListingId, setSelectedListingId] = useState(null);
   const [applicants, setApplicants] = useState([]);
 
-  useEffect(() => {
-    fetchListings();
-  }, [user.id]);
-
   const fetchListings = async () => {
     setLoading(true);
     try {
-      const data = await getMyVolunteerListings();
+      // Logic: Fetch only listings belonging to this NGO (handled by backend or filtered here)
+      const data = await getMyVolunteerListings(user.id);
       setListings(data);
     } catch (error) {
-      console.error(error);
+      console.error("Fetch error:", error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchListings();
+  }, [user.id]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
       await createVolunteerListing({ ...newListing, ngoId: user.id });
-      toast.success("Listing created!");
+      toast.success("Recruitment listing published!");
       setShowForm(false);
       setNewListing({
         title: "",
@@ -1040,15 +1052,16 @@ function VolunteerManager({ user }) {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Remove this listing?")) return;
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm("Remove this recruitment listing?")) return;
     setProcessingId(id);
     try {
       await deleteVolunteerListing(id);
-      toast.success("Removed.");
+      toast.success("Listing removed.");
       fetchListings();
     } catch (error) {
-      toast.error("Failed.");
+      toast.error("Failed to remove.");
     } finally {
       setProcessingId(null);
     }
@@ -1071,117 +1084,198 @@ function VolunteerManager({ user }) {
   if (loading) return <Spinner size="lg" />;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-slate-800 text-shadow-sm">
+    <div className="fredoka animate-fadeIn">
+      {/* HEADER SECTION */}
+      <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+        <h2 className="text-2xl font-bold text-slate-800">
           Volunteer Recruitment
         </h2>
         <button
           onClick={() => setShowForm(!showForm)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg font-bold transition-all shadow-sm ${
             showForm
-              ? "text-red-600 bg-red-50"
-              : "bg-[#009e8c] text-white shadow-md"
+              ? "text-red-600 bg-red-50 hover:bg-red-100"
+              : "bg-[#009e8c] text-white hover:bg-teal-700"
           }`}
         >
           {showForm ? "Cancel" : "+ Recruit Volunteers"}
         </button>
       </div>
 
+      {/* CREATE FORM */}
       {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="bg-gray-50 p-6 rounded-lg mb-6 space-y-4 border border-teal-100 animate-fadeIn"
-        >
-          {/* ... Inputs remain the same ... */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            {isSubmitting ? <Spinner size="sm" /> : "Post Listing"}
-          </button>
-        </form>
+        <div className="bg-gray-50 p-6 rounded-2xl mb-8 border border-indigo-100 shadow-inner animate-fadeIn">
+          <h3 className="text-lg font-bold text-slate-700 mb-4">
+            Post New Opportunity
+          </h3>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <input
+              placeholder="Listing Title (e.g., Shelter Cleaner)"
+              required
+              className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={newListing.title}
+              onChange={(e) =>
+                setNewListing({ ...newListing, title: e.target.value })
+              }
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                placeholder="Location"
+                required
+                className="p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={newListing.location}
+                onChange={(e) =>
+                  setNewListing({ ...newListing, location: e.target.value })
+                }
+              />
+              <input
+                placeholder="Skills Required (e.g., Basic Grooming)"
+                required
+                className="p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                value={newListing.skillsRequired}
+                onChange={(e) =>
+                  setNewListing({
+                    ...newListing,
+                    skillsRequired: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <textarea
+              placeholder="Detailed Description of the role..."
+              required
+              className="w-full p-3 border rounded-xl h-32 focus:ring-2 focus:ring-indigo-500 outline-none"
+              value={newListing.description}
+              onChange={(e) =>
+                setNewListing({ ...newListing, description: e.target.value })
+              }
+            />
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-md"
+            >
+              {isSubmitting ? <Spinner size="sm" /> : "Publish Listing"}
+            </button>
+          </form>
+        </div>
       )}
 
+      {/* LISTINGS GRID */}
       <div className="grid gap-4">
         {listings.map((item) => (
           <div
             key={item.id}
-            className="border p-4 rounded-lg bg-white flex justify-between items-center shadow-sm hover:shadow-md transition-shadow"
+            className="border p-5 rounded-2xl bg-white flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm hover:shadow-md transition-all group"
           >
             <div>
-              <h4 className="font-bold text-lg text-slate-800">{item.title}</h4>
-              <p className="text-sm text-gray-500">{item.location}</p>
-              <div className="flex gap-2 mt-2">
-                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold">
+              <h4 className="font-bold text-xl text-slate-800 group-hover:text-indigo-600 transition-colors">
+                {item.title}
+              </h4>
+              <p className="text-sm text-gray-500 flex items-center gap-1">
+                📍 {item.location}
+              </p>
+              <div className="flex gap-2 mt-3">
+                <span className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold border border-indigo-100">
                   {item.applicantIds?.length || 0} Applicants
+                </span>
+                <span className="text-xs bg-teal-50 text-teal-700 px-3 py-1 rounded-full font-bold border border-teal-100">
+                  {item.skillsRequired}
                 </span>
               </div>
             </div>
-            <div className="flex gap-4">
+
+            <div className="flex gap-3 mt-4 md:mt-0 w-full md:w-auto">
               <button
                 onClick={() => handleViewApplicants(item.id)}
-                className="text-indigo-600 font-bold hover:underline text-sm"
+                className="flex-1 md:flex-none bg-slate-100 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
               >
                 View Applicants
               </button>
               <button
                 disabled={processingId === item.id}
-                onClick={() => handleDelete(item.id)}
-                className="text-red-600 font-bold hover:underline text-sm disabled:opacity-50"
+                onClick={(e) => handleDelete(e, item.id)}
+                className="flex-1 md:flex-none text-red-600 bg-red-50 px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-100 transition-colors disabled:opacity-50"
               >
-                {processingId === item.id ? "Removing..." : "Remove"}
+                {processingId === item.id ? "..." : "Remove"}
               </button>
             </div>
           </div>
         ))}
+
+        {listings.length === 0 && !showForm && (
+          <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+            <p className="text-gray-400 text-lg">No active recruitments.</p>
+            <p className="text-sm text-gray-300">
+              Click "+ Recruit Volunteers" to find help for your shelter.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* APPLICANTS MODAL */}
       {selectedListingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
-              <h3 className="font-bold text-lg">Applicants List</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-indigo-600 px-6 py-5 flex justify-between items-center text-white">
+              <div>
+                <h3 className="font-bold text-xl leading-none">
+                  Potential Volunteers
+                </h3>
+                <p className="text-xs text-indigo-100 mt-1 opacity-80">
+                  Applicants for your listing
+                </p>
+              </div>
               <button
                 onClick={() => setSelectedListingId(null)}
-                className="text-2xl"
+                className="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
               >
                 &times;
               </button>
             </div>
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
+
+            <div className="p-6 max-h-[50vh] overflow-y-auto">
               {modalLoading ? (
-                <Spinner size="md" />
+                <div className="py-12">
+                  <Spinner size="lg" />
+                </div>
               ) : applicants.length === 0 ? (
-                <p className="text-center text-gray-500 py-10">
-                  No one has applied yet.
-                </p>
+                <div className="text-center py-12">
+                  <span className="text-4xl">📬</span>
+                  <p className="text-gray-500 mt-4">
+                    No applications received yet.
+                  </p>
+                </div>
               ) : (
-                <ul className="divide-y">
+                <ul className="space-y-3">
                   {applicants.map((applicant) => (
                     <li
                       key={applicant.id}
-                      className="py-4 first:pt-0 last:pb-0"
+                      className="p-4 bg-slate-50 rounded-2xl border border-gray-100 flex items-center gap-4"
                     >
-                      <p className="font-bold text-slate-800">
-                        {applicant.name}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        📧 {applicant.email}
-                      </p>
+                      <div className="w-10 h-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold">
+                        {applicant.name?.charAt(0) || "V"}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800">
+                          {applicant.name}
+                        </p>
+                        <p className="text-xs text-gray-500 font-mono">
+                          {applicant.email}
+                        </p>
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            <div className="bg-gray-50 px-6 py-3 text-right">
+
+            <div className="bg-slate-50 px-6 py-4 text-center border-t border-gray-100">
               <button
                 onClick={() => setSelectedListingId(null)}
-                className="text-sm font-bold text-slate-500 hover:text-slate-700"
+                className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
               >
-                Close
+                Close List
               </button>
             </div>
           </div>
