@@ -240,7 +240,76 @@ export default function EventDetail() {
               Edit Event
             </h2>
             <form onSubmit={handleUpdate} className="space-y-4">
-              {/* ... (Previous Edit Form Fields) ... */}
+              form onSubmit={handleUpdate} className="space-y-4">
+              {/* 🟢 Image Preview in Modal */}
+              <div className="relative w-full h-40 bg-gray-100 rounded-xl overflow-hidden mb-4 border border-dashed border-gray-300">
+                {editForm.imageUrl ? (
+                  <img
+                    src={editForm.imageUrl}
+                    className="w-full h-full object-cover"
+                    alt="Preview"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    No Image Selected
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-400 uppercase">
+                  Change Event Image
+                </label>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="text-sm block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                />
+              </div>
+              <input
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Title"
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, title: e.target.value })
+                }
+                required
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="datetime-local"
+                  className="p-3 border rounded-lg"
+                  value={
+                    editForm.eventDate
+                      ? new Date(editForm.eventDate).toISOString().slice(0, 16)
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, eventDate: e.target.value })
+                  }
+                  required
+                />
+
+                <input
+                  className="p-3 border rounded-lg"
+                  placeholder="Location"
+                  value={editForm.location}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, location: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <textarea
+                className="w-full p-3 border rounded-lg h-32"
+                placeholder="Description"
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, description: e.target.value })
+                }
+                required
+              />
               <button
                 type="submit"
                 disabled={isSubmitting}
