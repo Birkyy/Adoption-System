@@ -269,67 +269,80 @@ function Slider() {
   }, [currentIndex, slides.length]);
 
   return (
-    /* Added h-screen or a fixed height like h-[500px] to ensure the container is never 0px */
-    <div className="carousel h-screen w-full relative overflow-hidden bg-gray-200">
+    <div className="relative h-screen w-full overflow-hidden bg-gray-900">
+      {/* Inner Wrapper: The 'list' */}
       <div
-        className="list absolute inset-0 flex h-full w-full transition-transform duration-500 ease-out"
+        className="flex h-full w-full transition-transform duration-500 ease-out"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
         {slides.map((slide) => (
           <div
             key={slide.id}
-            /* Ensure 'item' is a flex container to center its content properly */
-            className={`item ${slide.bg} min-w-full h-full relative flex items-center justify-center`}
+            /* IMPORTANT: 'flex-none' prevents the slide from shrinking. 
+             'w-full' ensures it takes exactly one screen width.
+          */
+            className={`h-full w-full flex-none relative flex items-center justify-center ${slide.bg}`}
           >
-            {/* Removed the absolute centering div and placed content directly 
-              to allow the slide's flex layout to handle it naturally */}
+            {/* Slide Content */}
             <div className="w-full text-white px-4">{slide.content}</div>
           </div>
         ))}
       </div>
 
-      {/* Navigation Buttons - keep as you have them */}
+      {/* Navigation Buttons (Absolute positioned over the wrapper) */}
       <button
-        type="button"
         onClick={showPrev}
-        className="w-12 h-12 z-50 absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center bg-black/20 hover:bg-black/40 rounded-full text-white transition-all"
+        className="absolute left-4 top-1/2 z-30 -translate-y-1/2 p-2 text-white hover:scale-110 transition-transform"
       >
         <svg
-          width="30"
-          height="30"
-          viewBox="0 0 24 24"
+          className="w-10 h-10"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          viewBox="0 0 24 24"
         >
           <path
-            d="M15 18L9 12L15 6"
             strokeLinecap="round"
             strokeLinejoin="round"
+            strokeWidth="2"
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+      </button>
+      <button
+        onClick={showNext}
+        className="absolute right-4 top-1/2 z-30 -translate-y-1/2 p-2 text-white hover:scale-110 transition-transform"
+      >
+        <svg
+          className="w-10 h-10"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M9 5l7 7-7 7"
           />
         </svg>
       </button>
 
-      <button
-        type="button"
-        onClick={showNext}
-        className="w-12 h-12 z-50 absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center bg-black/20 hover:bg-black/40 rounded-full text-white transition-all"
-      >
-        <svg
-          width="30"
-          height="30"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path
-            d="M9 18L15 12L9 6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      {/* Dots indicators */}
+      <div className="absolute bottom-10 left-1/2 z-30 flex -translate-x-1/2 gap-3">
+        {slides.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              setCurrentIndex(idx);
+              setCurrentSlideIndex(idx);
+              resetTimer();
+            }}
+            className={`h-3 w-3 rounded-full transition-all ${
+              idx === currentIndex ? "bg-white w-8" : "bg-white/50"
+            }`}
           />
-        </svg>
-      </button>
+        ))}
+      </div>
     </div>
   );
 }
