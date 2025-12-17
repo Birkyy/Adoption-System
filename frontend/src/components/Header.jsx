@@ -12,6 +12,7 @@ function Header({ overlay = false }) {
   const isAlternatePage =
     ["/partner", "/adopt", "/event"].includes(location.pathname) ||
     location.pathname.startsWith("/pet/") ||
+    location.pathname.startsWith("/event/") ||
     location.pathname.startsWith("/adopt/apply/") ||
     location.pathname.startsWith("/article/");
 
