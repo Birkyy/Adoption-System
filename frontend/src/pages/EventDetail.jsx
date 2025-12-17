@@ -54,8 +54,9 @@ export default function EventDetail() {
         eventDate: data.eventDate,
         location: data.location,
         imageUrl: data.imageUrl,
+        // 🟢 FIX: Include the organizer's ID in the form state
+        createdById: data.createdById,
       });
-
       if (data.createdById) {
         try {
           const organizerData = await getPublicProfile(data.createdById);
@@ -78,14 +79,29 @@ export default function EventDetail() {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true); // 🟢 Prevent multiple clicks
+    setIsSubmitting(true);
+
+    // 🟢 FIX: Spread editForm and ensure createdById is definitely there
+    const updatedPayload = {
+      ...editForm,
+      createdById: event.createdById, // Safety fallback
+      eventDate: new Date(editForm.eventDate).toISOString(), // Ensure valid date format
+    };
+
     try {
-      await updateEvent(id, editForm, user.id);
-      toast.success("Event updated!");
+      // Your PetAPI.js 'updateEvent' expects (id, petData, userId)
+      await updateEvent(id, updatedPayload, user.id);
+      toast.success("Event updated successfully!");
       setShowEdit(false);
-      fetchEvent(); // Refresh to show new data and new image
+      fetchEvent();
     } catch (error) {
-      toast.error("Update failed. " + (error.response?.data || ""));
+      // Improved debugging: shows the specific field error in a toast
+      const errorData = error.response?.data?.errors;
+      const firstError = errorData
+        ? Object.values(errorData)[0][0]
+        : "Update failed";
+      toast.error(firstError);
+      console.error("Validation Error:", error.response?.data);
     } finally {
       setIsSubmitting(false);
     }
