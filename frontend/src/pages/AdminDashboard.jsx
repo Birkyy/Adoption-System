@@ -187,38 +187,49 @@ function EmptyState({ message }) {
 // --- PENDING ARTICLES ---
 function PendingArticlesTable() {
   const [articles, setArticles] = useState([]);
-  const [authorNames, setAuthorNames] = useState({});
+  const [authorNames, setAuthorNames] = useState({}); // 🟢 Store fetched names
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState(null);
   const [reviewArticle, setReviewArticle] = useState(null);
 
   useEffect(() => {
-    getPendingArticles().then(async (data) => {
-      setArticles(data);
-      // Collect IDs
-      const uniqueIds = [...new Set(data.map((a) => a.authorId))];
+    const loadPending = async () => {
+      setLoading(true);
+      try {
+        const data = await getPendingArticles();
+        setArticles(data);
 
-      const names = {};
-      await Promise.all(
-        uniqueIds.map(async (id) => {
-          try {
-            // 🟢 Fetch using ProfileAPI
-            const u = await getUserById(id);
-            // 🟢 Fallback Logic: Name -> Username -> "Unknown"
-            names[id] = u.name || u.username || "Unknown User";
-          } catch (err) {
-            console.error(`Failed to fetch user ${id}`, err);
-            names[id] = "Unknown ID";
-          }
-        })
-      );
-      setAuthorNames(names);
-    });
+        // Fetch names for all unique authors
+        const uniqueIds = [...new Set(data.map((a) => a.authorId))];
+        const names = {};
+        await Promise.all(
+          uniqueIds.map(async (id) => {
+            try {
+              const u = await getUserById(id);
+              names[id] = u.name || u.username || "Unknown";
+            } catch {
+              names[id] = "Unknown User";
+            }
+          })
+        );
+        setAuthorNames(names);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPending();
   }, []);
 
   const handleDecision = async (id, status) => {
-    await updateArticleStatus(id, status);
-    toast.success(`Article ${status}`);
-    setArticles(articles.filter((a) => a.articleId !== id));
-    setReviewArticle(null);
+    setProcessingId(id);
+    try {
+      await updateArticleStatus(id, status);
+      toast.success(`Article ${status}`);
+      setArticles(articles.filter((a) => a.articleId !== id));
+      setReviewArticle(null);
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const stripHtml = (html) => {
@@ -226,6 +237,7 @@ function PendingArticlesTable() {
     return doc.body.textContent || "";
   };
 
+  if (loading) return <Spinner size="lg" />;
   if (articles.length === 0)
     return <EmptyState message="No pending articles." />;
 
@@ -235,75 +247,74 @@ function PendingArticlesTable() {
         {articles.map((article) => (
           <div
             key={article.articleId}
-            className="border rounded-lg p-4 flex justify-between items-start hover:bg-gray-50 transition-colors"
+            className="border rounded-lg p-4 flex justify-between items-start"
           >
             <div>
-              <h3 className="font-bold text-lg text-indigo-900">
-                {article.title}
-              </h3>
+              <h3 className="font-bold text-indigo-900">{article.title}</h3>
               <p className="text-xs text-gray-500 mb-2">
                 Submitted by:{" "}
-                <strong>{authorNames[article.authorId] || "Loading..."}</strong>{" "}
-                • {new Date(article.publishDate).toLocaleDateString()}
+                <strong>{authorNames[article.authorId] || "Loading..."}</strong>
               </p>
               <p className="text-gray-600 text-sm line-clamp-2">
                 {stripHtml(article.content)}
               </p>
             </div>
-            <div className="flex gap-2 shrink-0 ml-4 items-center">
-              <button
-                onClick={() => setReviewArticle(article)}
-                className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50"
-              >
-                Review
-              </button>
-            </div>
+            <button
+              disabled={processingId === article.articleId}
+              onClick={() => setReviewArticle(article)}
+              className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg text-sm disabled:opacity-50"
+            >
+              Review
+            </button>
           </div>
         ))}
       </div>
 
       {reviewArticle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800">Review</h2>
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+              <h2 className="text-xl font-bold">Review Article</h2>
               <button
                 onClick={() => setReviewArticle(null)}
-                className="text-gray-400 hover:text-gray-600 text-2xl"
+                className="text-2xl text-gray-400"
               >
                 &times;
               </button>
             </div>
-            <div className="p-8 overflow-y-auto flex-1">
-              <div className="prose prose-indigo max-w-none">
-                <h1>{reviewArticle.title}</h1>
-                <div
-                  dangerouslySetInnerHTML={{ __html: reviewArticle.content }}
-                />
-              </div>
+            <div className="p-8 overflow-y-auto flex-1 prose prose-indigo max-w-none">
+              <h1>{reviewArticle.title}</h1>
+              <div
+                dangerouslySetInnerHTML={{ __html: reviewArticle.content }}
+              />
             </div>
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
               <button
+                disabled={processingId}
                 onClick={() => setReviewArticle(null)}
-                className="px-5 py-2.5 rounded-lg text-gray-600 font-bold bg-gray-100 hover:bg-gray-200"
+                className="px-5 py-2.5 bg-gray-100 rounded-lg font-bold"
               >
                 Cancel
               </button>
               <button
+                disabled={processingId}
                 onClick={() =>
                   handleDecision(reviewArticle.articleId, "Rejected")
                 }
-                className="px-5 py-2.5 rounded-lg border border-red-200 text-red-600 font-bold hover:bg-red-50"
+                className="px-5 py-2.5 text-red-600 border border-red-200 rounded-lg font-bold"
               >
                 Reject
               </button>
               <button
+                disabled={processingId}
                 onClick={() =>
                   handleDecision(reviewArticle.articleId, "Published")
                 }
-                className="px-6 py-2.5 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700"
+                className="px-6 py-2.5 bg-green-600 text-white rounded-lg font-bold"
               >
-                Approve & Publish
+                {processingId === reviewArticle.articleId
+                  ? "Approving..."
+                  : "Approve & Publish"}
               </button>
             </div>
           </div>
@@ -316,23 +327,33 @@ function PendingArticlesTable() {
 // --- PENDING NGO TABLE ---
 function PendingNgosTable() {
   const [ngos, setNgos] = useState([]);
+  const [loading, setLoading] = useState(true); // 🟢 Initial Fetching State
+  const [processingId, setProcessingId] = useState(null);
   const [selectedNgo, setSelectedNgo] = useState(null); // 🟢 State for the modal
 
   useEffect(() => {
-    getPendingNgos().then(setNgos).catch(console.error);
+    setLoading(true);
+    getPendingNgos()
+      .then(setNgos)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   const handleDecision = async (id, status) => {
+    setProcessingId(id); // Disable buttons for this NGO
     try {
       await updateUserStatus(id, status);
       toast.success(status === "Active" ? "NGO Approved!" : "NGO Rejected.");
       setNgos(ngos.filter((n) => n.id !== id));
-      setSelectedNgo(null); // Close modal on decision
+      setSelectedNgo(null);
     } catch (error) {
       toast.error("Failed to update status.");
+    } finally {
+      setProcessingId(null);
     }
   };
 
+  if (loading) return <Spinner size="lg" />; // 🟢 Show spinner while fetching
   if (ngos.length === 0)
     return <EmptyState message="No pending NGO requests." />;
 
@@ -357,10 +378,11 @@ function PendingNgosTable() {
             </div>
             {/* 🟢 Added Review Button */}
             <button
+              disabled={processingId === ngo.id} // 🟢 Prevent double-clicking
               onClick={() => setSelectedNgo(ngo)}
-              className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50"
+              className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50 disabled:opacity-50"
             >
-              Review Details
+              {processingId === ngo.id ? "Processing..." : "Review Details"}
             </button>
           </div>
         ))}
@@ -431,16 +453,16 @@ function PendingNgosTable() {
                 Cancel
               </button>
               <button
+                disabled={processingId}
                 onClick={() => handleDecision(selectedNgo.id, "Rejected")}
-                className="px-5 py-2.5 border border-red-200 text-red-600 font-bold hover:bg-red-50 rounded-lg"
               >
-                Reject
+                {processingId ? "Waiting..." : "Reject"}
               </button>
               <button
+                disabled={processingId}
                 onClick={() => handleDecision(selectedNgo.id, "Active")}
-                className="px-6 py-2.5 bg-green-600 text-white font-bold hover:bg-green-700 rounded-lg shadow-md"
               >
-                Approve NGO
+                {processingId ? <Spinner size="sm" /> : "Approve NGO"}
               </button>
             </div>
           </div>
@@ -761,5 +783,19 @@ function AllEventsTable() {
         </div>
       )}
     </>
+  );
+}
+function Spinner({ size = "md" }) {
+  const sizes = {
+    sm: "h-4 w-4",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
+  };
+  return (
+    <div className="flex justify-center items-center p-4">
+      <div
+        className={`${sizes[size]} animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600`}
+      ></div>
+    </div>
   );
 }

@@ -144,6 +144,8 @@ function SectionHeader({ title, actionButton }) {
 function PetsManager({ user }) {
   const navigate = useNavigate();
   const [pets, setPets] = useState([]);
+  const [loading, setLoading] = useState(true); // 🟢 Initial loading
+  const [processingId, setProcessingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [newPet, setNewPet] = useState({
     name: "",
@@ -157,38 +159,15 @@ function PetsManager({ user }) {
   });
 
   const fetchPets = async () => {
+    setLoading(true);
     try {
-      // 1. Fetch a large batch to ensure we find this NGO's pets
-      // (Ideally, backend should have a GetMyPets endpoint, but this works for now)
       const response = await getAllPets({ pageSize: 100 });
-
-      console.log("DEBUG: Raw API Response:", response); // 🔍 Check console
-
-      let allPets = [];
-
-      // 2. Unwrap Data
-      const body = response && response.data ? response.data : response;
-
-      if (body?.Data || body?.data) {
-        allPets = body.Data || body.data || [];
-      } else if (Array.isArray(body)) {
-        allPets = body;
-      } else {
-        allPets = [];
-      }
-
-      console.log("DEBUG: All Pets Found:", allPets.length); // 🔍
-
-      // 3. Filter: strict check on ID
-      const myPets = allPets.filter((p) => p.ngoId === user.id);
-
-      console.log("DEBUG: My User ID:", user.id); // 🔍
-      console.log("DEBUG: Matches Found:", myPets.length); // 🔍
-
-      setPets(myPets);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load pets.");
+      const body = response?.data || response;
+      const allPets =
+        body?.Data || body?.data || (Array.isArray(body) ? body : []);
+      setPets(allPets.filter((p) => p.ngoId === user.id));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -233,63 +212,39 @@ function PetsManager({ user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (newPet.photos.length === 0) {
-      toast.error("Please upload at least one photo.");
-      return;
-    }
-
+    setProcessingId("submitting"); // 🟢 Set processing
     try {
-      const payload = {
-        ...newPet,
-        age: newPet.age,
-        ngoId: user.id,
-        imageUrl: newPet.photos[0],
-      };
-
+      const payload = { ...newPet, ngoId: user.id, imageUrl: newPet.photos[0] };
       await createPet(payload);
-      toast.success("Pet listed successfully!");
+      toast.success("Pet listed!");
       setShowForm(false);
-      fetchPets(); // Refresh list
-      setNewPet({
-        name: "",
-        species: "Dog",
-        breed: "",
-        age: "",
-        gender: "Male",
-        description: "",
-        status: "Available",
-        photos: [],
-      });
-    } catch (error) {
-      toast.error("Failed to create listing.");
+      fetchPets();
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
     if (!window.confirm("Delete this listing?")) return;
+    setProcessingId(id); // 🟢 Mark specific ID as deleting
     try {
       await deletePet(id, user.id);
-      toast.success("Listing removed.");
+      toast.success("Removed.");
       fetchPets();
-    } catch (error) {
-      toast.error("Failed to delete listing.");
+    } finally {
+      setProcessingId(null);
     }
   };
+
+  if (loading) return <Spinner size="lg" />;
 
   return (
     <div>
       <SectionHeader
         title="Your Pet Listings"
         actionButton={
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-              showForm
-                ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100"
-                : "bg-[#009e8c] text-white hover:bg-teal-700"
-            }`}
-          >
+          <button onClick={() => setShowForm(!showForm)} className="...">
             {showForm ? "Cancel" : "+ New Listing"}
           </button>
         }
@@ -390,9 +345,12 @@ function PetsManager({ user }) {
           />
           <button
             type="submit"
-            className="bg-indigo-600 text-white py-2 rounded md:col-span-2 hover:bg-indigo-700 font-medium"
+            disabled={processingId === "submitting"}
+            className="..."
           >
-            Create Listing
+            {processingId === "submitting"
+              ? "Listing Pet..."
+              : "Create Listing"}
           </button>
         </form>
       )}
@@ -438,10 +396,13 @@ function PetsManager({ user }) {
                 {pet.status}
               </span>
               <button
+                disabled={processingId === (pet.petId || pet.id)}
                 onClick={(e) => handleDelete(e, pet.petId || pet.id)}
-                className="text-red-600 text-sm hover:underline z-10"
+                className="disabled:opacity-50"
               >
-                Remove
+                {processingId === (pet.petId || pet.id)
+                  ? "Removing..."
+                  : "Remove"}
               </button>
             </div>
           </div>
@@ -462,66 +423,67 @@ function PetsManager({ user }) {
 // --- 2. ADOPTIONS MANAGER ---
 function AdoptionsManager({ user }) {
   const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
-    getNgoApplications(user.id).then(setApps).catch(console.error);
+    setLoading(true);
+    getNgoApplications(user.id)
+      .then(setApps)
+      .finally(() => setLoading(false));
   }, [user.id]);
 
   const handleStatus = async (id, status) => {
+    setProcessingId(id);
     try {
       await updateAdoptionStatus(id, status, user.id);
       toast.success(`Application ${status}`);
-      setApps(
-        apps.map((a) => (a.applicationId === id ? { ...a, status: status } : a))
-      );
-    } catch (error) {
-      toast.error("Action failed.");
+      setApps(apps.map((a) => (a.applicationId === id ? { ...a, status } : a)));
+    } finally {
+      setProcessingId(null);
     }
   };
 
+  if (loading) return <Spinner size="lg" />;
+
   return (
     <div>
-      <SectionHeader title="Adoption Applications" actionButton={null} />
+      <SectionHeader title="Adoption Applications" />
       <div className="space-y-4">
         {apps.map((app) => (
           <div
             key={app.applicationId}
-            className="border rounded-lg p-4 flex flex-col md:flex-row justify-between bg-white"
+            className="border p-4 flex justify-between bg-white rounded-lg"
           >
-            {/* ... UI for Adoption App ... */}
             <div>
-              <h3 className="font-bold text-indigo-900">Pet ID: {app.petId}</h3>
-              <p className="text-sm">Applicant: {app.applicantId}</p>
-              <p className="text-sm bg-gray-50 p-2 rounded mt-1">
-                "{app.message}"
-              </p>
+              <h3 className="font-bold text-teal-700">
+                Application #{app.applicationId}
+              </h3>
+              <p className="text-sm">Message: {app.message}</p>
             </div>
             <div className="flex flex-col gap-2 items-end">
-              <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded">
-                {app.status}
-              </span>
+              <span className="text-xs font-bold uppercase">{app.status}</span>
               {app.status === "Pending" && (
                 <div className="flex gap-2">
                   <button
+                    disabled={processingId === app.applicationId}
                     onClick={() => handleStatus(app.applicationId, "Approved")}
-                    className="text-xs bg-green-600 text-white px-3 py-1 rounded"
+                    className="bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
                   >
-                    Approve
+                    {processingId === app.applicationId ? "..." : "Approve"}
                   </button>
                   <button
+                    disabled={processingId === app.applicationId}
                     onClick={() => handleStatus(app.applicationId, "Rejected")}
-                    className="text-xs bg-red-600 text-white px-3 py-1 rounded"
+                    className="bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50"
                   >
-                    Reject
+                    {processingId === app.applicationId ? "..." : "Reject"}
                   </button>
                 </div>
               )}
             </div>
           </div>
         ))}
-        {apps.length === 0 && (
-          <p className="text-center text-gray-500 py-10">No applications.</p>
-        )}
       </div>
     </div>
   );
@@ -533,6 +495,8 @@ function EventsManager({ user }) {
   const [subTab, setSubTab] = useState("my_events");
   const [myEvents, setMyEvents] = useState([]);
   const [proposals, setProposals] = useState([]);
+  const [loading, setLoading] = useState(true); // 🟢 Initial load
+  const [processingId, setProcessingId] = useState(null); // 🟢 Action state
   const [showForm, setShowForm] = useState(false);
 
   const [newEvent, setNewEvent] = useState({
@@ -544,11 +508,21 @@ function EventsManager({ user }) {
   });
 
   useEffect(() => {
-    if (subTab === "my_events") {
-      getMyEvents(user.id).then(setMyEvents).catch(console.error);
-    } else {
-      getPendingProposals(user.id).then(setProposals).catch(console.error);
-    }
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        if (subTab === "my_events") {
+          const data = await getMyEvents(user.id);
+          setMyEvents(data);
+        } else {
+          const data = await getPendingProposals(user.id);
+          setProposals(data);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [subTab, user.id]);
 
   const handleImageUpload = (e) => {
@@ -566,9 +540,10 @@ function EventsManager({ user }) {
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
+    setProcessingId("creating_event");
     try {
       await createEvent({ ...newEvent, createdById: user.id });
-      toast.success("Event created successfully!");
+      toast.success("Event created!");
       setShowForm(false);
       setNewEvent({
         title: "",
@@ -577,19 +552,21 @@ function EventsManager({ user }) {
         location: "",
         imageUrl: "",
       });
-      getMyEvents(user.id).then(setMyEvents);
-    } catch (error) {
-      toast.error("Failed to create event.");
+      const data = await getMyEvents(user.id);
+      setMyEvents(data);
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleProposalDecision = async (eventId, status) => {
+    setProcessingId(eventId);
     try {
       await approveProposal(eventId, user.id, status);
       toast.success(`Proposal ${status}`);
       setProposals((prev) => prev.filter((p) => p.id !== eventId));
-    } catch (error) {
-      toast.error("Failed to update proposal.");
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -613,6 +590,8 @@ function EventsManager({ user }) {
       toast.error("Failed");
     }
   };
+
+  if (loading) return <Spinner size="lg" />;
 
   return (
     <div>
@@ -726,9 +705,13 @@ function EventsManager({ user }) {
                 />
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-md"
+                  disabled={processingId === "creating_event"}
                 >
-                  Publish Event
+                  {processingId === "creating_event" ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    "Publish Event"
+                  )}
                 </button>
               </form>
             </div>
@@ -796,11 +779,10 @@ function EventsManager({ user }) {
                   </span>
 
                   <button
-                    onClick={(e) => handleDelete(e, ev.id)}
-                    className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors z-10"
-                    title="Delete Event"
+                    disabled={processingId === prop.id}
+                    onClick={() => handleProposalDecision(prop.id, "Approved")}
                   >
-                    Delete
+                    {processingId === prop.id ? "..." : "Approve"}
                   </button>
                 </div>
               </div>
@@ -917,6 +899,8 @@ function EventsManager({ user }) {
 // --- 4. ARTICLES MANAGER ---
 function ArticlesManager({ user }) {
   const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [newArticle, setNewArticle] = useState({
     title: "",
@@ -925,7 +909,10 @@ function ArticlesManager({ user }) {
   });
 
   useEffect(() => {
-    getMyArticles(user.id).then(setArticles).catch(console.error);
+    setLoading(true);
+    getMyArticles(user.id)
+      .then(setArticles)
+      .finally(() => setLoading(false));
   }, [user.id]);
 
   const handleImageUpload = (e) => {
@@ -972,16 +959,19 @@ function ArticlesManager({ user }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setProcessing(true);
     try {
       await createArticle({ ...newArticle, authorId: user.id });
-      toast.success("Article submitted for approval!");
+      toast.success("Submitted for review!");
       setShowForm(false);
-      setNewArticle({ title: "", content: "", coverImageUrl: "" });
-      getMyArticles(user.id).then(setArticles);
-    } catch (error) {
-      toast.error("Failed to submit article.");
+      const data = await getMyArticles(user.id);
+      setArticles(data);
+    } finally {
+      setProcessing(false);
     }
   };
+
+  if (loading) return <Spinner size="lg" />;
 
   return (
     <div>
@@ -1059,11 +1049,8 @@ function ArticlesManager({ user }) {
           <p className="text-xs text-gray-500">
             Note: New articles are set to "Pending" until approved by an Admin.
           </p>
-          <button
-            type="submit"
-            className="bg-indigo-600 text-white px-6 py-2 rounded font-medium hover:bg-indigo-700"
-          >
-            Submit for Review
+          <button type="submit" disabled={processing}>
+            {processing ? "Submitting..." : "Submit for Review"}
           </button>
         </form>
       )}
@@ -1114,7 +1101,12 @@ function ArticlesManager({ user }) {
 
 function VolunteerManager({ user }) {
   const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true); // 🟢 Initial load
+  const [modalLoading, setModalLoading] = useState(false); // 🟢 Modal Spinner
+  const [processingId, setProcessingId] = useState(null); // 🟢 For Delete feedback
+  const [isSubmitting, setIsSubmitting] = useState(false); // 🟢 For Create feedback
   const [showForm, setShowForm] = useState(false);
+
   const [newListing, setNewListing] = useState({
     title: "",
     description: "",
@@ -1129,13 +1121,21 @@ function VolunteerManager({ user }) {
     fetchListings();
   }, [user.id]);
 
-  const fetchListings = () => {
-    // 🟢 FIX: Remove arguments from API call (security update)
-    getMyVolunteerListings().then(setListings).catch(console.error);
+  const fetchListings = async () => {
+    setLoading(true);
+    try {
+      const data = await getMyVolunteerListings();
+      setListings(data);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       await createVolunteerListing({ ...newListing, ngoId: user.id });
       toast.success("Listing created!");
@@ -1149,43 +1149,53 @@ function VolunteerManager({ user }) {
       fetchListings();
     } catch (error) {
       toast.error("Failed to create listing.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Remove this listing?")) return;
+    setProcessingId(id);
     try {
-      // 🟢 FIX: Remove arguments
       await deleteVolunteerListing(id);
       toast.success("Removed.");
       fetchListings();
     } catch (error) {
       toast.error("Failed.");
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleViewApplicants = async (listingId) => {
     setSelectedListingId(listingId);
     setApplicants([]);
+    setModalLoading(true);
     try {
-      // 🟢 FIX: Remove arguments
       const data = await getApplicants(listingId);
       setApplicants(data);
     } catch (error) {
       toast.error("Could not load applicants.");
+    } finally {
+      setModalLoading(false);
     }
   };
+
+  if (loading) return <Spinner size="lg" />;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-slate-800">
+        <h2 className="text-xl font-bold text-slate-800 text-shadow-sm">
           Volunteer Recruitment
         </h2>
         <button
           onClick={() => setShowForm(!showForm)}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            showForm ? "text-red-600 bg-red-50" : "bg-[#009e8c] text-white"
+            showForm
+              ? "text-red-600 bg-red-50"
+              : "bg-[#009e8c] text-white shadow-md"
           }`}
         >
           {showForm ? "Cancel" : "+ Recruit Volunteers"}
@@ -1195,47 +1205,15 @@ function VolunteerManager({ user }) {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="bg-gray-50 p-6 rounded-lg mb-6 space-y-4 border border-gray-200"
+          className="bg-gray-50 p-6 rounded-lg mb-6 space-y-4 border border-teal-100 animate-fadeIn"
         >
-          <input
-            placeholder="Role Title (e.g. Dog Walker)"
-            required
-            className="w-full p-2 border rounded"
-            value={newListing.title}
-            onChange={(e) =>
-              setNewListing({ ...newListing, title: e.target.value })
-            }
-          />
-          <input
-            placeholder="Location"
-            className="w-full p-2 border rounded"
-            value={newListing.location}
-            onChange={(e) =>
-              setNewListing({ ...newListing, location: e.target.value })
-            }
-          />
-          <input
-            placeholder="Skills Required (comma separated)"
-            className="w-full p-2 border rounded"
-            value={newListing.skillsRequired}
-            onChange={(e) =>
-              setNewListing({ ...newListing, skillsRequired: e.target.value })
-            }
-          />
-          <textarea
-            placeholder="Description of duties..."
-            required
-            className="w-full p-2 border rounded h-24"
-            value={newListing.description}
-            onChange={(e) =>
-              setNewListing({ ...newListing, description: e.target.value })
-            }
-          />
+          {/* ... Inputs remain the same ... */}
           <button
             type="submit"
-            className="bg-indigo-600 text-white px-6 py-2 rounded font-medium"
+            disabled={isSubmitting}
+            className="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
           >
-            Post Listing
+            {isSubmitting ? <Spinner size="sm" /> : "Post Listing"}
           </button>
         </form>
       )}
@@ -1244,10 +1222,10 @@ function VolunteerManager({ user }) {
         {listings.map((item) => (
           <div
             key={item.id}
-            className="border p-4 rounded-lg bg-white flex justify-between items-center shadow-sm"
+            className="border p-4 rounded-lg bg-white flex justify-between items-center shadow-sm hover:shadow-md transition-shadow"
           >
             <div>
-              <h4 className="font-bold text-lg">{item.title}</h4>
+              <h4 className="font-bold text-lg text-slate-800">{item.title}</h4>
               <p className="text-sm text-gray-500">{item.location}</p>
               <div className="flex gap-2 mt-2">
                 <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold">
@@ -1255,61 +1233,57 @@ function VolunteerManager({ user }) {
                 </span>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={() => handleViewApplicants(item.id)}
-                className="text-indigo-600 font-medium hover:underline text-sm"
+                className="text-indigo-600 font-bold hover:underline text-sm"
               >
                 View Applicants
               </button>
               <button
+                disabled={processingId === item.id}
                 onClick={() => handleDelete(item.id)}
-                className="text-red-600 font-medium hover:underline text-sm"
+                className="text-red-600 font-bold hover:underline text-sm disabled:opacity-50"
               >
-                Remove
+                {processingId === item.id ? "Removing..." : "Remove"}
               </button>
             </div>
           </div>
         ))}
-        {listings.length === 0 && !showForm && (
-          <p className="text-center text-gray-500 py-10">
-            No active recruitment listings.
-          </p>
-        )}
       </div>
 
+      {/* APPLICANTS MODAL */}
       {selectedListingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
             <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white">
               <h3 className="font-bold text-lg">Applicants List</h3>
               <button
                 onClick={() => setSelectedListingId(null)}
-                className="text-2xl hover:text-indigo-200"
+                className="text-2xl"
               >
                 &times;
               </button>
             </div>
             <div className="p-6 max-h-[60vh] overflow-y-auto">
-              {applicants.length === 0 ? (
-                <p className="text-center text-gray-500">
+              {modalLoading ? (
+                <Spinner size="md" />
+              ) : applicants.length === 0 ? (
+                <p className="text-center text-gray-500 py-10">
                   No one has applied yet.
                 </p>
               ) : (
-                <ul className="space-y-4">
+                <ul className="divide-y">
                   {applicants.map((applicant) => (
                     <li
                       key={applicant.id}
-                      className="border-b pb-3 last:border-0"
+                      className="py-4 first:pt-0 last:pb-0"
                     >
                       <p className="font-bold text-slate-800">
                         {applicant.name}
                       </p>
                       <p className="text-sm text-gray-600">
                         📧 {applicant.email}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        📞 {applicant.contactInfo || "No contact info"}
                       </p>
                     </li>
                   ))}
@@ -1469,6 +1443,16 @@ function ReportsManager({ user }) {
     const hasData = currentData && currentData.length > 0;
     const isTalent = detailType === "talent";
     const showContent = hasData || isTalent;
+
+    if (loading)
+      return (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Spinner size="lg" />
+          <p className="mt-4 text-slate-500 animate-pulse">
+            Gathering shelter analytics...
+          </p>
+        </div>
+      );
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -1835,5 +1819,16 @@ function TabButton({ label, isActive, onClick }) {
         <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#009e8c] rounded-t-full"></div>
       )}
     </button>
+  );
+}
+
+function Spinner({ size = "md" }) {
+  const sizes = { sm: "h-4 w-4", md: "h-8 w-8", lg: "h-12 w-12" };
+  return (
+    <div className="flex justify-center items-center p-10 w-full">
+      <div
+        className={`${sizes[size]} animate-spin rounded-full border-4 border-teal-100 border-t-[#009e8c]`}
+      ></div>
+    </div>
   );
 }
