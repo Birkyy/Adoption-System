@@ -244,7 +244,14 @@ function PetsManager({ user }) {
       <SectionHeader
         title="Your Pet Listings"
         actionButton={
-          <button onClick={() => setShowForm(!showForm)} className="...">
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className={`px-4 py-2 rounded-lg transition-colors font-medium shadow-sm ${
+              showForm
+                ? "text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100"
+                : "bg-[#009e8c] text-white hover:bg-teal-700"
+            }`}
+          >
             {showForm ? "Cancel" : "+ New Listing"}
           </button>
         }
@@ -398,7 +405,7 @@ function PetsManager({ user }) {
               <button
                 disabled={processingId === (pet.petId || pet.id)}
                 onClick={(e) => handleDelete(e, pet.petId || pet.id)}
-                className="disabled:opacity-50"
+                className="disabled:opacity-50 text-red-500"
               >
                 {processingId === (pet.petId || pet.id)
                   ? "Removing..."
