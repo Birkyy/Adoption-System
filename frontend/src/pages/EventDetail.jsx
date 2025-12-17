@@ -6,7 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
 import toast from "react-hot-toast";
 
-// Shared Spinner for consistent UX
+// Reusing the same Spinner for UI consistency across your portal
 function Spinner({ size = "md" }) {
   const sizes = { sm: "h-4 w-4", md: "h-8 w-8", lg: "h-12 w-12" };
   return (
@@ -30,7 +30,7 @@ export default function EventDetail() {
   const [organizer, setOrganizer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Tracks update progress
   const [imgSrc, setImgSrc] = useState("");
 
   const [showEdit, setShowEdit] = useState(false);
@@ -41,7 +41,7 @@ export default function EventDetail() {
     location: "",
     imageUrl: "",
     createdById: "",
-    participantIds: [], // 🟢 Ensure this is initialized
+    participantIds: [],
   });
 
   const fetchEvent = async () => {
@@ -50,7 +50,7 @@ export default function EventDetail() {
       setEvent(data);
       setImgSrc(data.imageUrl || FALLBACK_IMAGE);
 
-      // 🟢 Sync everything into the edit form
+      // Sync everything into the edit form
       setEditForm({
         title: data.title,
         description: data.description,
@@ -81,14 +81,27 @@ export default function EventDetail() {
     fetchEvent();
   }, [id]);
 
+  // 🟢 FIXED: Re-added the missing handleImageUpload function
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) return toast.error("Max 2MB per image.");
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setEditForm({ ...editForm, imageUrl: ev.target.result });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // 🟢 CRITICAL FIX: Ensure participantIds are sent in the payload
+    // Ensure participantIds are sent in the payload to prevent data loss
     const updatedPayload = {
       ...editForm,
-      participantIds: event.participantIds || [], // Carry over existing joins
+      participantIds: event.participantIds || [],
       eventDate: new Date(editForm.eventDate).toISOString(),
     };
 
@@ -96,7 +109,7 @@ export default function EventDetail() {
       await updateEvent(id, updatedPayload, user.id);
       toast.success("Event updated!");
       setShowEdit(false);
-      await fetchEvent(); // 🟢 Refresh to update UI with latest data
+      await fetchEvent(); // Refresh UI with latest data
     } catch (error) {
       toast.error("Update failed.");
     } finally {
@@ -110,7 +123,7 @@ export default function EventDetail() {
       setTimeout(() => navigate("/signin"), 1500);
       return;
     }
-    // Prevent double-joining
+
     if (event.participantIds?.includes(user.id)) {
       toast.success("You've already joined this event!");
       return;
@@ -120,7 +133,7 @@ export default function EventDetail() {
     try {
       await joinEvent(event.id, user.id);
       toast.success("Joined successfully!");
-      await fetchEvent(); // 🟢 Refresh count and badge
+      await fetchEvent(); // Refresh count and badge
     } catch (error) {
       toast.error("Failed to join.");
     } finally {
@@ -129,7 +142,6 @@ export default function EventDetail() {
   };
 
   const isCreator = user && event && user.id === event.createdById;
-  // 🟢 Helper to check if user is in the participants list
   const isGoing = user && event?.participantIds?.includes(user.id);
 
   if (loading) return <LoadingScreen />;
@@ -188,6 +200,17 @@ export default function EventDetail() {
               {event.description}
             </p>
           </div>
+          <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
+            <h3 className="text-lg font-bold text-indigo-900 mb-2">
+              Organizer
+            </h3>
+            <p className="text-indigo-700">
+              Organized by{" "}
+              <span className="font-bold">
+                {organizer ? organizer.name || organizer.username : "NGO Admin"}
+              </span>
+            </p>
+          </div>
         </div>
 
         <div className="lg:col-span-1">
@@ -201,7 +224,6 @@ export default function EventDetail() {
               </p>
             </div>
 
-            {/* 🟢 JOIN BUTTON LOGIC */}
             <button
               onClick={handleJoinClick}
               disabled={joining || event.status !== "Approved" || isGoing}
@@ -222,7 +244,6 @@ export default function EventDetail() {
               )}
             </button>
 
-            {/* 🟢 GOING BADGE */}
             {isGoing && (
               <div className="mt-4 bg-green-50 text-green-700 p-3 rounded-xl text-center font-bold text-sm border border-green-100 animate-bounce">
                 ✅ You are on the list!
@@ -232,15 +253,20 @@ export default function EventDetail() {
         </div>
       </div>
 
-      {/* EDIT MODAL REMAINS THE SAME AS BEFORE */}
       {showEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 animate-fadeIn max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-slate-800 mb-6">
-              Edit Event
-            </h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-800">Edit Event</h2>
+              <button
+                onClick={() => setShowEdit(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+
             <form onSubmit={handleUpdate} className="space-y-4">
-              {/* 🟢 Image Preview in Modal */}
               <div className="relative w-full h-40 bg-gray-100 rounded-xl overflow-hidden mb-4 border border-dashed border-gray-300">
                 {editForm.imageUrl ? (
                   <img
@@ -254,11 +280,11 @@ export default function EventDetail() {
                   </div>
                 )}
               </div>
+
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-bold text-slate-400 uppercase">
                   Change Event Image
                 </label>
-
                 <input
                   type="file"
                   accept="image/*"
@@ -266,6 +292,7 @@ export default function EventDetail() {
                   className="text-sm block w-full text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                 />
               </div>
+
               <input
                 className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                 placeholder="Title"
@@ -275,6 +302,7 @@ export default function EventDetail() {
                 }
                 required
               />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="datetime-local"
@@ -289,7 +317,6 @@ export default function EventDetail() {
                   }
                   required
                 />
-
                 <input
                   className="p-3 border rounded-lg"
                   placeholder="Location"
@@ -300,6 +327,7 @@ export default function EventDetail() {
                   required
                 />
               </div>
+
               <textarea
                 className="w-full p-3 border rounded-lg h-32"
                 placeholder="Description"
@@ -309,6 +337,7 @@ export default function EventDetail() {
                 }
                 required
               />
+
               <button
                 type="submit"
                 disabled={isSubmitting}
