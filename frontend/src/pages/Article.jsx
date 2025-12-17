@@ -212,7 +212,7 @@ export default function Article() {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-amber-300 opacity-10 rounded-full translate-x-1/3 translate-y-1/3"></div>
 
         {/* Wave SVG */}
-        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none rotate-180">
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
           <svg
             data-name="Layer 1"
             xmlns="http://www.w3.org/2000/svg"
