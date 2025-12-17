@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useSlide } from "../contexts/SlideContext";
 import { useAuth } from "../contexts/AuthContext";
 
-function Header() {
+function Header({ overlay = false }) {
   const { currentSlideIndex } = useSlide();
   const { user } = useAuth();
   const location = useLocation();
@@ -53,7 +53,10 @@ function Header() {
 
   return (
     <nav
-      className={`navbar fixed top-0 left-0 right-0 z-[100] w-full ${backgroundColor} transition-all duration-300 ease-in-out`}
+      className={`navbar ${
+        // Changed 'fixed' to 'absolute' so it scrolls away
+        overlay ? "absolute top-0 left-0 right-0 z-50 w-full" : "w-full"
+      } ${backgroundColor} transition-colors duration-300 ease-in-out`}
     >
       <ul
         className={`flex justify-between items-center p-4 text-lg font-semibold transition-colors duration-500 ease-in-out ${textColor}`}

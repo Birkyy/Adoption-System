@@ -27,18 +27,17 @@
   --font-family-gloria: 'Gloria Hallelujah', cursive;
 }
 
-/* Base resets for Snapping */
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%; /* Required for snap-y to calculate screen height */
-  width: 100%;
-  overflow-x: hidden; /* Prevent horizontal "disaster" shifts */
+body {
+    height: 100%;
 }
 
 html {
-  scroll-snap-type: y mandatory; /* Enable vertical snapping */
+  scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
+  margin: 0;
+  overscroll-behavior: none;
+  box-sizing: border-box;
+  /* REMOVE scroll-padding-top: 80px; */
 }
 
 /* Helper Classes */
