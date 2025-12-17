@@ -269,7 +269,8 @@ function Slider() {
   }, [currentIndex, slides.length]);
 
   return (
-    <div className="carousel h-screen w-screen relative overflow-hidden overscroll-contain">
+    /* Added h-screen or a fixed height like h-[500px] to ensure the container is never 0px */
+    <div className="carousel h-screen w-full relative overflow-hidden bg-gray-200">
       <div
         className="list absolute inset-0 flex h-full w-full transition-transform duration-500 ease-out"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
@@ -277,84 +278,58 @@ function Slider() {
         {slides.map((slide) => (
           <div
             key={slide.id}
-            className={`item ${slide.bg} min-w-full h-full relative`}
+            /* Ensure 'item' is a flex container to center its content properly */
+            className={`item ${slide.bg} min-w-full h-full relative flex items-center justify-center`}
           >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white">
-              {slide.content}
-            </div>
+            {/* Removed the absolute centering div and placed content directly 
+              to allow the slide's flex layout to handle it naturally */}
+            <div className="w-full text-white px-4">{slide.content}</div>
           </div>
         ))}
       </div>
 
+      {/* Navigation Buttons - keep as you have them */}
       <button
         type="button"
-        aria-label="Previous slide"
         onClick={showPrev}
-        className="w-10 h-10 flex z-50 absolute left-2 top-1/2 -translate-y-1/2 justify-center items-center cursor-pointer text-white hover:text-gray-300 transition delay-150 duration-300 ease-in-out"
+        className="w-12 h-12 z-50 absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center bg-black/20 hover:bg-black/40 rounded-full text-white transition-all"
       >
-        {/* Left Arrow */}
         <svg
-          width="100%"
-          height="100%"
+          width="30"
+          height="30"
           viewBox="0 0 24 24"
           fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+          stroke="currentColor"
+          strokeWidth="2"
         >
           <path
             d="M15 18L9 12L15 6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </svg>
       </button>
 
       <button
         type="button"
-        aria-label="Next slide"
         onClick={showNext}
-        className="w-10 h-10 flex z-50 absolute right-2 top-1/2 -translate-y-1/2 justify-center items-center cursor-pointer text-white hover:text-gray-300 transition delay-150 duration-300 ease-in-out"
+        className="w-12 h-12 z-50 absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center bg-black/20 hover:bg-black/40 rounded-full text-white transition-all"
       >
-        {/* Right Arrow */}
         <svg
-          width="100%"
-          height="100%"
+          width="30"
+          height="30"
           viewBox="0 0 24 24"
           fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+          stroke="currentColor"
+          strokeWidth="2"
         >
           <path
             d="M9 18L15 12L9 6"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </svg>
       </button>
-
-      {/* Dots indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex gap-2">
-        {slides.map((_, idx) => (
-          <button
-            key={idx}
-            type="button"
-            aria-label={`Go to slide ${idx + 1}`}
-            onClick={() => {
-              setCurrentIndex(idx);
-              setCurrentSlideIndex(idx);
-              resetTimer();
-            }}
-            className={
-              `h-2 w-2 rounded-full transition-colors duration-200 ` +
-              (idx === currentIndex
-                ? "bg-white"
-                : "bg-white/50 hover:bg-white/80")
-            }
-          />
-        ))}
-      </div>
     </div>
   );
 }

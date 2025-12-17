@@ -27,82 +27,82 @@
   --font-family-gloria: 'Gloria Hallelujah', cursive;
 }
 
-.navbar {
-  font-family: 'Alan Sans', sans-serif;
-}
-
-.fredoka {
-  font-family: 'Fredoka', sans-serif;
-}
-
-.gloria {
-  font-family: 'Gloria Hallelujah', cursive;
-}
-
-.h-color{
-    color: #422200;
-}
-
-.p-color{
-    color: #6d481d;
-}
-
-.btn-color{
-    background-color: #ffad33;
-}
-
-.btn-color:hover{
-    background-color: hsl(36, 100%, 40%);
-}
-
-html{
-  scroll-snap-type: y mandatory;
+/* Base resets for Snapping */
+html, body {
   margin: 0;
-  overscroll-behavior: none;
-  box-sizing: border-box;
+  padding: 0;
+  height: 100%; /* Required for snap-y to calculate screen height */
+  width: 100%;
+  overflow-x: hidden; /* Prevent horizontal "disaster" shifts */
 }
 
+html {
+  scroll-snap-type: y mandatory; /* Enable vertical snapping */
+  scroll-behavior: smooth;
+}
+
+/* Helper Classes */
+.navbar { font-family: var(--font-family-alan-sans); }
+.fredoka { font-family: var(--font-family-fredoka); }
+.gloria { font-family: var(--font-family-gloria); }
+
+/* Ensure sections take exactly the screen height */
+section {
+  scroll-snap-align: start; /* Each section is a snap point */
+  scroll-snap-stop: always;
+  height: 100vh;
+  width: 100%;
+}
+
+/* Custom Marker Styling */
 ol.adopt-list {
-	list-style-position: inside;
-	background: white;
-	box-shadow: 0.25rem 0.25rem 0.75rem rgb(0 0 0 / 0.15);
+  list-style-position: inside;
+  background: white;
+  box-shadow: 0.25rem 0.25rem 0.75rem rgb(0 0 0 / 0.15);
 }
 
 ol.adopt-list li {
-	padding: 0 0 0 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid lightblue;
 }
 
-ol.adopt-list li:not(:last-child) {
-	border-bottom: 1px solid lightblue;
+ol.adopt-list li:last-child { border-bottom: none; }
+
+ol.adopt-list li::marker { content: counter(list-item) ' 🔍 '; }
+ol.adopt-list li:nth-child(2)::marker { content: counter(list-item) ' 🐈 '; }
+ol.adopt-list li:nth-child(3)::marker { content: counter(list-item) ' 📝 '; }
+ol.adopt-list li:nth-child(4)::marker { content: counter(list-item) ' ⏰ '; }
+ol.adopt-list li:nth-child(5)::marker { content: counter(list-item) ' 🎉 '; }
+
+/* Ensure the carousel container has a solid height immediately */
+.carousel {
+    display: block;
+    position: relative;
+    height: 100vh; /* Match your Slider.jsx height */
+    width: 100%;
+    overflow: hidden;
 }
 
-ol.adopt-list li:first-child {
-	margin-top: 1rem;
+/* Force the list to stay horizontal even before JS loads */
+.carousel .list {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: 300%; /* Total slides * 100% */
+    height: 100%;
 }
 
-ol.adopt-list li:last-child {
-	margin-bottom: 1rem;
+/* Ensure images don't cause layout shifting */
+.carousel img {
+    max-height: 100%;
+    object-fit: contain;
+    /* This prevents images from being huge before the CSS constraints kick in */
+    display: block;
 }
 
-/* Custom markers */
-ol.adopt-list li::marker {
-	--image: ' 🔍 ';
-	content: counter(list-item) ' ' var(--image);
+/* If you are using Tailwind, ensure these classes are applied */
+.item {
+    flex-shrink: 0;
+    width: 100vw;
+    height: 100%;
 }
-
-ol.adopt-list li:nth-child(2)::marker {
-	--image: '🐈 ';
-}
-
-ol.adopt-list li:nth-child(3)::marker {
-	--image: '📝 ';
-}
-
-ol.adopt-list li:nth-child(4)::marker {
-	--image: '⏰ ';
-}
-
-ol.adopt-list li:nth-child(5)::marker {
-	--image: '🎉 ';
-}
-
