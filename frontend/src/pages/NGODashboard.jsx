@@ -1084,7 +1084,7 @@ function VolunteerManager({ user }) {
   if (loading) return <Spinner size="lg" />;
 
   return (
-    <div className="fredoka animate-fadeIn">
+    <div>
       {/* HEADER SECTION */}
       <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
         <h2 className="text-2xl font-bold text-slate-800">
@@ -1092,7 +1092,7 @@ function VolunteerManager({ user }) {
         </h2>
         <button
           onClick={() => setShowForm(!showForm)}
-          className={`px-4 py-2 rounded-lg font-bold transition-all shadow-sm ${
+          className={`px-4 py-2 rounded-lg transition-all shadow-sm ${
             showForm
               ? "text-red-600 bg-red-50 hover:bg-red-100"
               : "bg-[#009e8c] text-white hover:bg-teal-700"

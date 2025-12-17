@@ -17,7 +17,6 @@ export default function EventCard({ event }) {
   }, [event.imageUrl]);
 
   const handleNavigate = () => {
-    // Use event.id or event.EventId depending on your model serialization
     navigate(`/event/${event.id}`);
   };
 
@@ -59,7 +58,7 @@ export default function EventCard({ event }) {
           {event.title}
         </h3>
 
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="h-4 w-4 text-indigo-400"
@@ -83,11 +82,8 @@ export default function EventCard({ event }) {
           {event.location || "TBD"}
         </div>
 
-        <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
-          {event.description}
-        </p>
-
-        <button className="w-full py-2.5 rounded-lg bg-indigo-50 text-indigo-700 font-semibold text-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+        {/* mt-auto ensures the button stays at the bottom of the card content area */}
+        <button className="mt-auto w-full py-2.5 rounded-lg bg-indigo-50 text-indigo-700 font-semibold text-sm group-hover:bg-indigo-600 group-hover:text-white transition-colors">
           View Details
         </button>
       </div>
