@@ -540,19 +540,6 @@ function EventsManager({ user }) {
     fetchData();
   }, [subTab, user.id]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Image too large. Max 2MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) =>
-      setNewEvent((prev) => ({ ...prev, imageUrl: ev.target.result }));
-    reader.readAsDataURL(file);
-  };
-
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     setProcessingId("creating_event");
@@ -589,9 +576,9 @@ function EventsManager({ user }) {
   };
 
   const handleDelete = async (e, id) => {
-    e.stopPropagation();
+    e.stopPropagation(); // 🟢 Prevents navigating to the detail page when deleting
     if (!window.confirm("Delete event?")) return;
-    setProcessingId(id); // 🟢 Start loading feedback for this ID
+    setProcessingId(id);
     try {
       await deleteEvent(id);
       toast.success("Event deleted");
@@ -599,23 +586,15 @@ function EventsManager({ user }) {
     } catch (err) {
       toast.error("Failed to delete.");
     } finally {
-      setProcessingId(null); // 🟢 Clear loading feedback
+      setProcessingId(null);
     }
-  };
-
-  const handleDownloadDocument = (base64Data, fileName) => {
-    const link = document.createElement("a");
-    link.href = base64Data;
-    link.download = fileName || "proposal-document.pdf";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   if (loading) return <Spinner size="lg" />;
 
   return (
-    <div>
+    <div className="animate-fadeIn">
+      {/* TAB NAVIGATION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 min-h-[40px] gap-4 border-b border-gray-100 pb-4">
         <div className="flex gap-4">
           <button
@@ -661,12 +640,11 @@ function EventsManager({ user }) {
       {subTab === "my_events" && (
         <div className="space-y-6">
           {showForm && (
-            <div className="bg-gray-50 p-6 rounded-xl border border-indigo-100 animate-fadeIn">
+            <div className="bg-gray-50 p-6 rounded-xl border border-indigo-100 animate-fadeIn mb-8">
               <h3 className="text-lg font-bold text-slate-700 mb-4">
                 Create New Event
               </h3>
               <form onSubmit={handleCreateEvent} className="space-y-4">
-                {/* ... Inputs ... */}
                 <input
                   placeholder="Event Title"
                   required
@@ -724,25 +702,19 @@ function EventsManager({ user }) {
             {myEvents.map((ev) => (
               <div
                 key={ev.id}
+                onClick={() => navigate(`/event/${ev.id}`)} // 🟢 Navigate to detail page
                 className="border p-4 rounded-lg flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
               >
-                <div
-                  className="flex gap-4 items-center"
-                  onClick={() => navigate(`/event/${ev.id}`)}
-                >
-                  {ev.imageUrl ? (
+                <div className="flex gap-4 items-center">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border bg-gray-50 flex-shrink-0">
                     <img
-                      src={ev.imageUrl}
+                      src={ev.imageUrl || "https://via.placeholder.com/150"}
                       alt=""
-                      className="w-20 h-20 rounded-lg object-cover bg-gray-100 border"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     />
-                  ) : (
-                    <div className="w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-                      No Img
-                    </div>
-                  )}
+                  </div>
                   <div>
-                    <h4 className="font-bold text-lg text-slate-800">
+                    <h4 className="font-bold text-lg text-slate-800 group-hover:text-indigo-600 transition-colors">
                       {ev.title}
                     </h4>
                     <p className="text-sm text-gray-500">
@@ -762,10 +734,9 @@ function EventsManager({ user }) {
                   >
                     {ev.status === "Approved" ? "Active" : ev.status}
                   </span>
-                  {/* 🟢 FIXED: Using 'ev.id' for the Delete button, not 'prop.id' */}
                   <button
                     disabled={processingId === ev.id}
-                    onClick={(e) => handleDelete(e, ev.id)}
+                    onClick={(e) => handleDelete(e, ev.id)} // 🟢 Use 'ev.id' here
                     className="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 rounded-lg transition-colors disabled:opacity-50"
                   >
                     {processingId === ev.id ? "..." : "Delete"}
@@ -773,37 +744,37 @@ function EventsManager({ user }) {
                 </div>
               </div>
             ))}
+            {myEvents.length === 0 && !showForm && (
+              <EmptyState message="No events created yet." />
+            )}
           </div>
         </div>
       )}
 
       {subTab === "proposals" && (
         <div className="space-y-4">
-          {proposals.map(
-            (
-              prop // 🟢 This loop uses 'prop'
-            ) => (
-              <div
-                key={prop.id}
-                className="border p-5 rounded-xl bg-yellow-50 border-yellow-100 shadow-sm"
-              >
-                <h4 className="font-bold text-lg text-slate-800">
-                  {prop.title}
-                </h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Proposed by User ID: {prop.createdById}
-                </p>
-                <div className="flex gap-3 pt-4 border-t border-yellow-200">
-                  <button
-                    disabled={processingId === prop.id} // 🟢 Correctly using 'prop' here
-                    onClick={() => handleProposalDecision(prop.id, "Approved")}
-                    className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50"
-                  >
-                    {processingId === prop.id ? "..." : "Approve Proposal"}
-                  </button>
-                </div>
+          {proposals.map((prop) => (
+            <div
+              key={prop.id}
+              className="border p-5 rounded-xl bg-yellow-50 border-yellow-100 shadow-sm animate-fadeIn"
+            >
+              <h4 className="font-bold text-lg text-slate-800">{prop.title}</h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Proposed by User ID: {prop.createdById}
+              </p>
+              <div className="flex gap-3 pt-4 border-t border-yellow-200">
+                <button
+                  disabled={processingId === prop.id} // 🟢 Using 'prop.id' here
+                  onClick={() => handleProposalDecision(prop.id, "Approved")}
+                  className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50 shadow-sm"
+                >
+                  {processingId === prop.id ? "..." : "Approve Proposal"}
+                </button>
               </div>
-            )
+            </div>
+          ))}
+          {proposals.length === 0 && (
+            <EmptyState message="No pending proposals found." />
           )}
         </div>
       )}
