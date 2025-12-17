@@ -58,10 +58,13 @@ builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
-        "AllowReactApp",
+        "AllowAll",
         policy =>
         {
-            policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod();
+            policy
+                .AllowAnyOrigin() // Allows Vercel, Localhost, anywhere
+                .AllowAnyMethod()
+                .AllowAnyHeader();
         }
     );
 });
@@ -76,7 +79,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowReactApp");
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 

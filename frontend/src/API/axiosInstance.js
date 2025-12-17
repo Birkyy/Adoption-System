@@ -1,8 +1,9 @@
 import axios from "axios";
 
-// Create a base instance
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5118/api";
+
 const api = axios.create({
-  baseURL: "http://localhost:5118/api", // Change this to your actual Backend URL
+  baseURL: BASE_URL,
 });
 
 // Add a Request Interceptor
