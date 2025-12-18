@@ -996,16 +996,6 @@ function ArticlesManager({ user }) {
   );
 }
 
-import React, { useState, useEffect } from "react";
-import toast from "react-hot-toast";
-import {
-  getMyVolunteerListings,
-  createVolunteerListing,
-  deleteVolunteerListing,
-  getApplicants,
-} from "../API/VolunteerAPI";
-import Spinner from "../components/Spinner"; // Ensure you have a Spinner component
-
 function VolunteerManager({ user }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
