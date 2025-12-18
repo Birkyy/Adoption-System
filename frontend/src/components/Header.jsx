@@ -74,7 +74,7 @@ function Header({ overlay = false }) {
 
         {/* Center: Navigation Links */}
         <div className="flex gap-10 z-99">
-          <li className="relative group z-99">
+          <li className="relative group">
             <span
               className={`block px-4 py-2 ${hoverColor} rounded cursor-pointer transition-colors z-99`}
             >
