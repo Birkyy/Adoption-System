@@ -73,14 +73,14 @@ function Header({ overlay = false }) {
         </li>
 
         {/* Center: Navigation Links */}
-        <div className="flex gap-10 z-99">
+        <div className="flex gap-10">
           <li className="relative group">
             <span
-              className={`block px-4 py-2 ${hoverColor} rounded cursor-pointer transition-colors z-99`}
+              className={`block px-4 py-2 ${hoverColor} rounded cursor-pointer transition-colors`}
             >
               Adopt or Support
             </span>
-            <ul className="text-black hidden absolute top-full left-0 group-hover:block bg-white shadow-xl p-4 space-y-2 min-w-[200px] rounded-lg">
+            <ul className="text-black hidden absolute top-full left-0 group-hover:block bg-white shadow-xl p-4 space-y-2 min-w-[200px] rounded-lg z-99">
               <li>
                 <NavLink
                   to="/adopt"
