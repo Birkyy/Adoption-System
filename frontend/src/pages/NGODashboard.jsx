@@ -996,6 +996,16 @@ function ArticlesManager({ user }) {
   );
 }
 
+import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import {
+  getMyVolunteerListings,
+  createVolunteerListing,
+  deleteVolunteerListing,
+  getApplicants,
+} from "../API/VolunteerAPI";
+import Spinner from "../components/Spinner"; // Ensure you have a Spinner component
+
 function VolunteerManager({ user }) {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1017,7 +1027,7 @@ function VolunteerManager({ user }) {
   const fetchListings = async () => {
     setLoading(true);
     try {
-      // Logic: Fetch only listings belonging to this NGO (handled by backend or filtered here)
+      // Fetches listings specific to this NGO ID
       const data = await getMyVolunteerListings(user.id);
       setListings(data);
     } catch (error) {
@@ -1072,6 +1082,7 @@ function VolunteerManager({ user }) {
     setApplicants([]);
     setModalLoading(true);
     try {
+      // Retrieves detailed user information from the backend
       const data = await getApplicants(listingId);
       setApplicants(data);
     } catch (error) {
@@ -1206,29 +1217,19 @@ function VolunteerManager({ user }) {
         {listings.length === 0 && !showForm && (
           <div className="text-center py-16 bg-white rounded-3xl border-2 border-dashed border-gray-200">
             <p className="text-gray-400 text-lg">No active recruitments.</p>
-            <p className="text-sm text-gray-300">
-              Click "+ Recruit Volunteers" to find help for your shelter.
-            </p>
           </div>
         )}
       </div>
 
-      {/* APPLICANTS MODAL */}
+      {/* APPLICANTS MODAL WITH CONTACT INFO */}
       {selectedListingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden">
             <div className="bg-indigo-600 px-6 py-5 flex justify-between items-center text-white">
-              <div>
-                <h3 className="font-bold text-xl leading-none">
-                  Potential Volunteers
-                </h3>
-                <p className="text-xs text-indigo-100 mt-1 opacity-80">
-                  Applicants for your listing
-                </p>
-              </div>
+              <h3 className="font-bold text-xl">Potential Volunteers</h3>
               <button
                 onClick={() => setSelectedListingId(null)}
-                className="bg-white/20 hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                className="text-2xl font-light hover:text-red-200 transition-colors"
               >
                 &times;
               </button>
@@ -1236,15 +1237,10 @@ function VolunteerManager({ user }) {
 
             <div className="p-6 max-h-[50vh] overflow-y-auto">
               {modalLoading ? (
-                <div className="py-12">
-                  <Spinner size="lg" />
-                </div>
+                <Spinner size="lg" />
               ) : applicants.length === 0 ? (
-                <div className="text-center py-12">
-                  <span className="text-4xl">📬</span>
-                  <p className="text-gray-500 mt-4">
-                    No applications received yet.
-                  </p>
+                <div className="text-center py-12 text-gray-500">
+                  No applications received yet.
                 </div>
               ) : (
                 <ul className="space-y-3">
@@ -1253,16 +1249,22 @@ function VolunteerManager({ user }) {
                       key={applicant.id}
                       className="p-4 bg-slate-50 rounded-2xl border border-gray-100 flex items-center gap-4"
                     >
-                      <div className="w-10 h-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold">
+                      <div className="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-lg shadow-sm">
                         {applicant.name?.charAt(0) || "V"}
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-800">
+                      <div className="flex-1">
+                        <p className="font-bold text-slate-800 text-lg">
                           {applicant.name}
                         </p>
-                        <p className="text-xs text-gray-500 font-mono">
+                        <p className="text-sm text-gray-500">
                           {applicant.email}
                         </p>
+                        {/* Display the contactInfo property from the User domain model */}
+                        <div className="mt-2 inline-flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-indigo-50 shadow-sm">
+                          <span className="text-indigo-600 font-bold text-xs">
+                            📞 {applicant.contactInfo || "No phone provided"}
+                          </span>
+                        </div>
                       </div>
                     </li>
                   ))}
@@ -1284,7 +1286,6 @@ function VolunteerManager({ user }) {
     </div>
   );
 }
-
 function ReportsManager({ user }) {
   const [adoptions, setAdoptions] = useState([]);
   const [events, setEvents] = useState([]);
@@ -1809,6 +1810,15 @@ function Spinner({ size = "md" }) {
       <div
         className={`${sizes[size]} animate-spin rounded-full border-4 border-teal-100 border-t-[#009e8c]`}
       ></div>
+    </div>
+  );
+}
+
+function EmptyState({ message }) {
+  return (
+    <div className="text-center py-12 bg-white rounded-xl text-gray-500 shadow-sm border-2 border-dashed border-gray-100">
+      <div className="text-4xl mb-3">📂</div>
+      <p className="text-lg font-medium">{message}</p>
     </div>
   );
 }
