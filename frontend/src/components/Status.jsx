@@ -4,6 +4,7 @@ import { getMyApplications, withdrawApplication } from "../API/AdoptionAPI";
 import { getMyEvents, deleteEvent } from "../API/EventAPI";
 import { useAuth } from "../contexts/AuthContext";
 import toast from "react-hot-toast";
+import { getMyArticles, deleteArticle } from "../API/ArticleAPI";
 
 function StatusBadge({ status }) {
   const map = {
@@ -30,7 +31,7 @@ export default function Status({ isAdmin = false, onBack } = {}) {
   const [adoptions, setAdoptions] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [articles, setArticles] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
   const [tab, setTab] = useState("adoptions");
@@ -42,12 +43,14 @@ export default function Status({ isAdmin = false, onBack } = {}) {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [myApps, myEvts] = await Promise.all([
+        const [myApps, myEvts, myArts] = await Promise.all([
           getMyApplications(user.id),
           getMyEvents(user.id),
+          getMyArticles(user.id), // Fetch articles
         ]);
         setAdoptions(myApps);
         setEvents(myEvts);
+        setArticles(myArts); // Set article state
       } catch (error) {
         console.error(error);
         toast.error("Failed to load status data.");
@@ -107,6 +110,28 @@ export default function Status({ isAdmin = false, onBack } = {}) {
     });
   }, [events, search, filter]);
 
+  const handleDeleteArticle = async (ev, id) => {
+    ev.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this article?"))
+      return;
+    try {
+      await deleteArticle(id, user.id);
+      toast.success("Article deleted.");
+      setArticles((prev) => prev.filter((a) => a.articleId !== id));
+    } catch (err) {
+      toast.error("Failed to delete article.");
+    }
+  };
+
+  const filteredArticles = useMemo(() => {
+    return articles.filter((a) => {
+      const q = search.trim().toLowerCase();
+      if (filter !== "All" && a.status !== filter) return false;
+      if (!q) return true;
+      return a.title.toLowerCase().includes(q);
+    });
+  }, [articles, search, filter]);
+
   return (
     <div className="py-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-h-[500px]">
       <div className="flex items-center justify-between mb-6">
@@ -143,6 +168,17 @@ export default function Status({ isAdmin = false, onBack } = {}) {
             }`}
           >
             Proposals
+          </button>
+
+          <button
+            onClick={() => setTab("articles")}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              tab === "articles"
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Articles
           </button>
         </div>
       </div>
@@ -259,6 +295,48 @@ export default function Status({ isAdmin = false, onBack } = {}) {
                       )}
                       {e.status === "Approved" && (
                         <span className="text-gray-400 text-sm">›</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </>
+          )}
+
+          {tab === "articles" && (
+            <>
+              {filteredArticles.length === 0 ? (
+                <p className="text-center text-gray-400 py-10">
+                  No articles found.
+                </p>
+              ) : (
+                filteredArticles.map((a) => (
+                  <div
+                    key={a.articleId}
+                    onClick={() => navigate(`/article/${a.articleId}`)}
+                    className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-indigo-200 cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">📝</span>
+                      <div>
+                        <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                          {a.title}
+                        </h4>
+                        <p className="text-xs text-gray-500">
+                          Submitted on:{" "}
+                          {new Date(a.publishDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <StatusBadge status={a.status} />
+                      {a.status === "Pending" && (
+                        <button
+                          onClick={(ev) => handleDeleteArticle(ev, a.articleId)}
+                          className="text-xs font-bold text-red-500 border border-red-100 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
                       )}
                     </div>
                   </div>

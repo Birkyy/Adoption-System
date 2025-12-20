@@ -187,7 +187,7 @@ function Home() {
           </div>
 
           {/* Category Buttons (Added relative z-10 to ensure clickability) */}
-          <div className="relative z-10 space-x-5">
+          <div className="relative z-10 space-x-5 mb-5">
             <CardButton
               contents={BUTTON_CONTENTS}
               activeCategory={activeCategory}
@@ -196,7 +196,7 @@ function Home() {
           </div>
 
           {/* Pet Grid (Existing z-10 is good) */}
-          <div className="max-sm:flex max-sm:flex-col max-sm:gap-y-10 grid grid-cols-2 gap-7 xl:(grid-cols-3 gap-10) relative z-10 min-h-[400px]">
+          <div className="grid grid-cols-3 gap-3 md:gap-10 lg:gap-14 relative z-10 min-h-[400px] w-full max-w-7xl px-4">
             {isFetching ? (
               <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50">
                 <svg
@@ -221,9 +221,9 @@ function Home() {
                 <p className="fredoka font-medium">Finding friends...</p>
               </div>
             ) : visibleCards.length > 0 ? (
-              visibleCards.map((pet) => (
-                <Card key={pet.petId || pet.id} content={pet} />
-              ))
+              visibleCards
+                .slice(0, 3)
+                .map((pet) => <Card key={pet.petId || pet.id} content={pet} />)
             ) : (
               <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50 mt-10">
                 <p className="fredoka font-medium text-lg">

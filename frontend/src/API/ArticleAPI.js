@@ -29,3 +29,25 @@ export const createArticle = async (articleData) => {
     throw error;
   }
 };
+
+export const getMyArticles = async (authorId) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/Articles/my-articles`, {
+      params: { authorId }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteArticle = async (id, currentUserId) => {
+  try {
+    const response = await axios.delete(`${BASE_URL}/Articles/${id}`, {
+      params: { currentUserId }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
