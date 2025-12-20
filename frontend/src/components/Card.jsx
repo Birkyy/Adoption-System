@@ -23,7 +23,7 @@ const Card = ({ content }) => {
       onClick={handleClick}
       // 🟢 COMPACT HEIGHTS: Roughly 20% smaller than the previous version
       // 🟢 REFINED ROUNDING: from [2rem] to [1.5rem] (3xl) to match the smaller scale
-      className="rounded-3xl overflow-hidden w-full h-40 sm:h-52 md:h-64 lg:h-72 xl:h-80 relative shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer bg-white group text-left border border-transparent hover:border-indigo-100"
+      className="rounded-3xl overflow-hidden w-full h-40 sm:h-52 md:h-64 lg:h-72 xl:h-96 relative shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer bg-white group text-left border border-transparent hover:border-indigo-100"
     >
       {/* Image Section (Keep 75-80% height) */}
       <div className="h-[78%] w-full overflow-hidden relative">
