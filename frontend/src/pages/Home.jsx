@@ -236,7 +236,7 @@ function Home() {
           {/* Browse More Link (Added relative z-10) */}
           <NavLink
             to="/adopt"
-            className="relative z-10 md:mt-5 fredoka font-semibold tracking-wide text-lg text-[hsl(228,14%,50%)] hover:(text-[#bc9da7] text-shadow-md) text-shadow-sm transition-all duration-500 ease-in-out cursor-pointer"
+            className="relative z-10 fredoka font-semibold tracking-wide text-lg text-[hsl(228,14%,50%)] hover:(text-[#bc9da7] text-shadow-md) text-shadow-sm transition-all duration-500 ease-in-out cursor-pointer"
           >
             Browse More
           </NavLink>
