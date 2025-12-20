@@ -196,7 +196,7 @@ function Home() {
           </div>
 
           {/* Pet Grid (Existing z-10 is good) */}
-          <div className="grid grid-cols-3 gap-3 md:gap-10 lg:gap-14 relative z-10 min-h-[400px] w-full max-w-7xl px-4">
+          <div className="grid grid-cols-3 gap-3 md:gap-10 lg:gap-14 relative z-10 min-h-[300px] w-full max-w-7xl px-4">
             {isFetching ? (
               <div className="col-span-full flex flex-col items-center justify-center text-amber-900/50">
                 <svg
