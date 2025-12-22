@@ -44,9 +44,6 @@ export default function ArticleCard({ article }) {
         <h3 className="text-xl font-bold text-slate-800 mb-3 line-clamp-2 group-hover:text-[#009e8c] transition-colors">
           {article.title}
         </h3>
-        <p className="text-gray-600 text-sm line-clamp-3 leading-relaxed mb-4 flex-1">
-          {article.content}
-        </p>
         <div className="flex items-center gap-2 text-sm font-semibold text-[#009e8c] group-hover:underline">
           Read More →
         </div>
