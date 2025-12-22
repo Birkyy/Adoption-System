@@ -540,6 +540,24 @@ function EventsManager({ user }) {
     fetchData();
   }, [subTab, user.id]);
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validation: Max 5MB
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image size must be less than 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setNewEvent((prev) => ({ ...prev, imageUrl: ev.target.result }));
+      toast.success("Image attached!");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateEvent = async (e) => {
     e.preventDefault();
     setProcessingId("creating_event");
@@ -673,6 +691,36 @@ function EventsManager({ user }) {
                       setNewEvent({ ...newEvent, location: e.target.value })
                     }
                   />
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-lg border border-dashed border-gray-300">
+                  <label className="block text-sm font-bold text-gray-600 mb-1">
+                    Event Cover Photo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                  />
+                  {newEvent.imageUrl && (
+                    <div className="mt-2 relative w-32 h-20 rounded-lg overflow-hidden border">
+                      <img
+                        src={newEvent.imageUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewEvent({ ...newEvent, imageUrl: "" })
+                        }
+                        className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <textarea
                   placeholder="Description"
