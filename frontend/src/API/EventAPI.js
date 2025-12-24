@@ -1,4 +1,5 @@
 import api from "./axiosInstance";
+import axios from "axios";
 
 // UPDATED: Accepts params for Pagination & Filtering
 export const getPublicEvents = async (params = {}) => {
