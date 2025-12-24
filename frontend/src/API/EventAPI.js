@@ -21,10 +21,7 @@ export const getEventById = async (id) => {
 };
 
 export const getEventParticipants = async (eventId) => {
-  const token = sessionStorage.getItem("token");
-  const response = await axios.get(`${BASE_URL}/Events/${eventId}/participants`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const response = await api.get(`/Events/${eventId}/participants`);
   return response.data;
 };
 
