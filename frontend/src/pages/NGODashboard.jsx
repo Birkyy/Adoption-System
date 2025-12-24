@@ -30,6 +30,7 @@ import {
   getMyArticles,
   createArticle,
   deleteEvent,
+  getEnrichedAdoptions,
 } from "../API/NgoAPI";
 
 import {
@@ -444,13 +445,11 @@ function AdoptionsManager({ user }) {
 
   useEffect(() => {
     setLoading(true);
-    // 🟢 Call the NEW enriched endpoint
-    axios
-      .get(`https://pet-app.runasp.net/api/Adoptions/enriched-list/${user.id}`)
-      .then((res) => setApps(res.data))
-      .catch((err) => toast.error("Report failed"))
+    getEnrichedAdoptions()
+      .then((data) => setApps(data))
+      .catch(() => toast.error("Report failed"))
       .finally(() => setLoading(false));
-  }, [user.id]);
+  }, []);
 
   const handleStatus = async (id, status) => {
     setProcessingId(id);
@@ -1495,20 +1494,9 @@ function ReportsManager({ user }) {
   const handleShowAdoptionDetails = async () => {
     setDetailType("loading");
 
-    // 1. Grab the token from where you stored it (usually localStorage)
-    const token = sessionStorage.getItem("token");
-
     try {
-      const response = await axios.get(
-        `https://pet-app.runasp.net/api/Adoptions/enriched-list/${user.id}`,
-        {
-          headers: {
-            // 🟢 THIS IS THE FIX: Prove to the server you are authorized
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setDetailData(response.data);
+      const data = await getEnrichedAdoptions();
+      setDetailData(data);
       setDetailType("adoptions");
     } catch (e) {
       console.error("Report Error:", e.response?.status);

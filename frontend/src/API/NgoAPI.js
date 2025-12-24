@@ -16,6 +16,15 @@ export const getAllPets = async (params = {}) => {
   }
 };
 
+export const getEnrichedAdoptions = async () => {
+  try {
+    const response = await api.get("/Adoptions/enriched-list");
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const deletePet = async (petId, currentUserId) => {
   const response = await api.delete(`/Pets/${petId}?currentUserId=${currentUserId}`);
   return response.data;

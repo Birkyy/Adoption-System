@@ -18,17 +18,32 @@ builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Get the key from configuration
-        var jwtKey = builder.Configuration["JwtSettings:Key"];
+        // 🔎 DEBUG EVENTS (TEMPORARY)
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine("=== JWT AUTH FAILED ===");
+                Console.WriteLine(context.Exception.GetType().Name);
+                Console.WriteLine(context.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                Console.WriteLine("=== JWT CHALLENGE TRIGGERED ===");
+                return Task.CompletedTask;
+            },
+        };
 
-        // Safety check: if key is null on the server, it won't crash immediately
-        // but you should set "JwtSettings__Key" in MonsterASP as well.
-        var keyBytes = Encoding.UTF8.GetBytes(
-            jwtKey ?? "temporary_development_key_32_characters_long"
-        );
+        var jwtKey = builder.Configuration["JwtSettings:Key"];
+        if (string.IsNullOrEmpty(jwtKey))
+            throw new Exception("JWT Key is missing");
+
+        var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
+            ClockSkew = TimeSpan.Zero,
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
