@@ -1491,18 +1491,30 @@ function ReportsManager({ user }) {
     return data;
   }, [adoptions, events]);
 
+  const token = localStorage.getItem("token");
+
   // --- Click Handlers for Details ---
   const handleShowAdoptionDetails = async () => {
     setDetailType("loading");
+
+    // 1. Grab the token from where you stored it (usually localStorage)
+    const token = localStorage.getItem("token");
+
     try {
-      // Call the new report endpoint directly
       const response = await axios.get(
-        `${BASE_URL}/Adoptions/enriched-list/${user.id}`
+        `https://pet-app.runasp.net/api/Adoptions/enriched-list/${user.id}`,
+        {
+          headers: {
+            // 🟢 THIS IS THE FIX: Prove to the server you are authorized
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
       setDetailData(response.data);
       setDetailType("adoptions");
     } catch (e) {
-      toast.error("Failed to load report data");
+      console.error("Report Error:", e.response?.status);
+      toast.error("Unauthorized: Please log in again.");
     }
   };
 
