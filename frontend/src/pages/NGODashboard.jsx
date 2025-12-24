@@ -1491,14 +1491,12 @@ function ReportsManager({ user }) {
     return data;
   }, [adoptions, events]);
 
-  const token = localStorage.getItem("token");
-
   // --- Click Handlers for Details ---
   const handleShowAdoptionDetails = async () => {
     setDetailType("loading");
 
     // 1. Grab the token from where you stored it (usually localStorage)
-    const token = localStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
 
     try {
       const response = await axios.get(
