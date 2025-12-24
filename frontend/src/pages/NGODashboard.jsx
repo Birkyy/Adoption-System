@@ -1164,6 +1164,7 @@ function VolunteerManager({ user }) {
     try {
       await createVolunteerListing({ ...newListing, ngoId: user.id });
       toast.success("Recruitment listing published!");
+
       setShowForm(false);
       setNewListing({
         title: "",
