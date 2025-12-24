@@ -41,6 +41,7 @@ import {
 } from "../API/VolunteerAPI";
 
 import { getUserById } from "../API/ProfileAPI";
+import { getPetById } from "../API/PetAPI";
 import { VolunteerApplicantsCard } from "../components/VolunteerApplicantsCard";
 import { EventParticipantsCard } from "../components/EventParticipantsCard";
 
@@ -442,10 +443,48 @@ function AdoptionsManager({ user }) {
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    getNgoApplications(user.id)
-      .then(setApps)
-      .finally(() => setLoading(false));
+    const fetchAndEnrichApps = async () => {
+      setLoading(true);
+      try {
+        // 1. Get raw applications
+        const rawApps = await getNgoApplications(user.id);
+
+        // 2. Enrich data (Fetch User and Pet names for each app)
+        const enrichedApps = await Promise.all(
+          rawApps.map(async (app) => {
+            try {
+              const [applicant, pet] = await Promise.all([
+                getUserById(app.applicantId),
+                getPetById(app.petId),
+              ]);
+
+              return {
+                ...app,
+                applicantName: applicant.name || applicant.username,
+                applicantEmail: applicant.email,
+                applicantPhone: applicant.contactInfo || "No Contact Provided",
+                petName: pet.name || "Unknown Pet",
+              };
+            } catch (err) {
+              // Graceful fallback if one user or pet fetch fails
+              return {
+                ...app,
+                applicantName: "User Profile Hidden",
+                petName: "Pet Record Missing",
+              };
+            }
+          })
+        );
+
+        setApps(enrichedApps);
+      } catch (error) {
+        toast.error("Failed to load applications");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAndEnrichApps();
   }, [user.id]);
 
   const handleStatus = async (id, status) => {
@@ -459,46 +498,119 @@ function AdoptionsManager({ user }) {
     }
   };
 
-  if (loading) return <Spinner size="lg" />;
+  if (loading)
+    return (
+      <div className="p-10 text-center text-slate-500">
+        Processing records...
+      </div>
+    );
 
   return (
-    <div>
-      <SectionHeader title="Adoption Applications" />
-      <div className="space-y-4">
-        {apps.map((app) => (
-          <div
-            key={app.applicationId}
-            className="border p-4 flex justify-between bg-white rounded-lg"
-          >
-            <div>
-              <h3 className="font-bold text-teal-700">
-                Application #{app.applicationId}
-              </h3>
-              <p className="text-sm">Message: {app.message}</p>
-            </div>
-            <div className="flex flex-col gap-2 items-end">
-              <span className="text-xs font-bold uppercase">{app.status}</span>
-              {app.status === "Pending" && (
-                <div className="flex gap-2">
-                  <button
-                    disabled={processingId === app.applicationId}
-                    onClick={() => handleStatus(app.applicationId, "Approved")}
-                    className="bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
-                  >
-                    {processingId === app.applicationId ? "..." : "Approve"}
-                  </button>
-                  <button
-                    disabled={processingId === app.applicationId}
-                    onClick={() => handleStatus(app.applicationId, "Rejected")}
-                    className="bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50"
-                  >
-                    {processingId === app.applicationId ? "..." : "Reject"}
-                  </button>
-                </div>
-              )}
-            </div>
+    <div className="space-y-6">
+      <div className="border-b pb-4">
+        <h2 className="text-2xl font-bold text-slate-800">Adoption Requests</h2>
+        <p className="text-sm text-slate-500">
+          Review and manage adoption applications for your shelter.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        {apps.length === 0 ? (
+          <div className="text-center py-20 bg-slate-50 rounded-xl border-2 border-dashed">
+            <p className="text-slate-400">No applications found.</p>
           </div>
-        ))}
+        ) : (
+          apps.map((app) => (
+            <div
+              key={app.applicationId}
+              className="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row justify-between gap-4"
+            >
+              <div className="space-y-3 flex-1">
+                {/* Pet Name Header */}
+                <div className="flex items-center gap-2">
+                  <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                    Pet Adoption
+                  </span>
+                  <h3 className="text-lg font-extrabold text-slate-800">
+                    Applying for:{" "}
+                    <span className="text-indigo-600">{app.petName}</span>
+                  </h3>
+                </div>
+
+                {/* Applicant Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">👤 Applicant:</span>
+                    <span className="font-semibold text-slate-700">
+                      {app.applicantName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">📧 Email:</span>
+                    <a
+                      href={`mailto:${app.applicantEmail}`}
+                      className="text-indigo-500 hover:underline"
+                    >
+                      {app.applicantEmail}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">📞 Phone:</span>
+                    <span className="text-slate-700">{app.applicantPhone}</span>
+                  </div>
+                </div>
+
+                {/* Description/Message */}
+                <div className="bg-slate-50 p-3 rounded-lg border-l-4 border-slate-300">
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-1">
+                    Applicant Message:
+                  </p>
+                  <p className="text-slate-600 text-sm italic italic">
+                    "{app.message || "No description provided."}"
+                  </p>
+                </div>
+              </div>
+
+              {/* Status and Actions */}
+              <div className="flex flex-col justify-between items-end min-w-[150px]">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                    app.status === "Approved"
+                      ? "bg-green-100 text-green-700"
+                      : app.status === "Rejected"
+                      ? "bg-red-100 text-red-700"
+                      : "bg-amber-100 text-amber-700"
+                  }`}
+                >
+                  {app.status}
+                </span>
+
+                {app.status === "Pending" && (
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      disabled={processingId === app.applicationId}
+                      onClick={() =>
+                        handleStatus(app.applicationId, "Approved")
+                      }
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      disabled={processingId === app.applicationId}
+                      onClick={() =>
+                        handleStatus(app.applicationId, "Rejected")
+                      }
+                      className="bg-white border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
