@@ -1416,47 +1416,16 @@ function ReportsManager({ user }) {
 
   // --- Click Handlers for Details ---
   const handleShowAdoptionDetails = async () => {
-    const successfulAdoptions = adoptions.filter(
-      (a) => a.status === "Approved"
-    );
-
-    if (successfulAdoptions.length === 0) {
-      setDetailData([]);
-      setDetailType("adoptions");
-      return;
-    }
-
     setDetailType("loading");
     try {
-      const details = await Promise.all(
-        successfulAdoptions.map(async (app) => {
-          try {
-            // 2. Fetch both User and Pet details in parallel for efficiency
-            const [userData, petData] = await Promise.all([
-              getUserById(app.applicantId),
-              getPetById(app.petId),
-            ]);
-
-            return {
-              ...app,
-              applicantName: userData.name || userData.username,
-              applicantEmail: userData.email,
-              petName: petData.name, // Now we have the real pet name
-            };
-          } catch (e) {
-            return {
-              ...app,
-              applicantName: "Unknown User",
-              petName: "Unknown Pet",
-            };
-          }
-        })
+      // Call the new report endpoint directly
+      const response = await axios.get(
+        `${BASE_URL}/Adoptions/ngo-report/${user.id}`
       );
-      setDetailData(details);
+      setDetailData(response.data);
       setDetailType("adoptions");
     } catch (e) {
-      toast.error("Failed to load adoption success report");
-      setDetailType(null);
+      toast.error("Failed to load report data");
     }
   };
 
