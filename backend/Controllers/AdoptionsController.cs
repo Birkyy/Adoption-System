@@ -74,30 +74,32 @@ namespace backend.Controllers
             return Ok(applications);
         }
 
-        [HttpGet("ngo-report/{ngoId}")]
-        public async Task<IActionResult> GetNgoReport(string ngoId)
+        [HttpGet("enriched-list/{ngoId}")]
+        public async Task<ActionResult<List<AdoptionReportDTO>>> GetEnrichedList(string ngoId)
         {
-            var apps = await _adoptionService.GetByNgoIdAsync(ngoId);
-            var report = new List<AdoptionReportDTO>();
+            var applications = await _adoptionService.GetByNgoIdAsync(ngoId);
+            var enrichedList = new List<AdoptionReportDTO>();
 
-            foreach (var app in apps.Where(a => a.Status == "Approved"))
+            foreach (var app in applications)
             {
-                var pet = await _petService.GetAsync(app.PetId);
                 var user = await _userService.GetByIdAsync(app.ApplicantId);
+                var pet = await _petService.GetAsync(app.PetId);
 
-                report.Add(
+                enrichedList.Add(
                     new AdoptionReportDTO
                     {
-                        ApplicationId = app.ApplicationId,
+                        ApplicationId = app.ApplicationId!,
                         PetName = pet?.Name ?? "Unknown Pet",
                         ApplicantName = user?.Name ?? user?.Username ?? "Unknown User",
                         ApplicantEmail = user?.Email ?? "N/A",
+                        ApplicantPhone = user?.ContactInfo ?? "N/A",
+                        Message = app.Message,
                         Status = app.Status,
-                        Date = app.SubmissionDate,
                     }
                 );
             }
-            return Ok(report);
+
+            return Ok(enrichedList);
         }
 
         // 3. GET NGO APPLICATIONS (NGO Only)

@@ -442,48 +442,13 @@ function AdoptionsManager({ user }) {
   const [processingId, setProcessingId] = useState(null);
 
   useEffect(() => {
-    const fetchAndEnrichApps = async () => {
-      setLoading(true);
-      try {
-        // 1. Get raw applications
-        const rawApps = await getNgoApplications(user.id);
-
-        // 2. Enrich data (Fetch User and Pet names for each app)
-        const enrichedApps = await Promise.all(
-          rawApps.map(async (app) => {
-            try {
-              const [applicant, pet] = await Promise.all([
-                getUserById(app.applicantId),
-                getPetById(app.petId),
-              ]);
-
-              return {
-                ...app,
-                applicantName: applicant.name || applicant.username,
-                applicantEmail: applicant.email,
-                applicantPhone: applicant.contactInfo || "No Contact Provided",
-                petName: pet.name || "Unknown Pet",
-              };
-            } catch (err) {
-              // Graceful fallback if one user or pet fetch fails
-              return {
-                ...app,
-                applicantName: "User Profile Hidden",
-                petName: "Pet Record Missing",
-              };
-            }
-          })
-        );
-
-        setApps(enrichedApps);
-      } catch (error) {
-        toast.error("Failed to load applications");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAndEnrichApps();
+    setLoading(true);
+    // 🟢 Call the NEW enriched endpoint
+    axios
+      .get(`https://pet-app.runasp.net/api/Adoptions/enriched-list/${user.id}`)
+      .then((res) => setApps(res.data))
+      .catch((err) => toast.error("Report failed"))
+      .finally(() => setLoading(false));
   }, [user.id]);
 
   const handleStatus = async (id, status) => {
@@ -1531,7 +1496,7 @@ function ReportsManager({ user }) {
     try {
       // Call the new report endpoint directly
       const response = await axios.get(
-        `${BASE_URL}/Adoptions/ngo-report/${user.id}`
+        `${BASE_URL}/Adoptions/enriched-list/${user.id}`
       );
       setDetailData(response.data);
       setDetailType("adoptions");
