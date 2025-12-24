@@ -1,5 +1,6 @@
-import { getUserById } from "../API/ProfileAPI";
+import { getEventParticipants } from "../API/EventAPI";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 
 export const EventParticipantsCard = ({ event, user }) => {
   const [expanded, setExpanded] = useState(false);
