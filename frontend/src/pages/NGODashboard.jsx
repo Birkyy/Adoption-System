@@ -1496,12 +1496,21 @@ function ReportsManager({ user }) {
     setDetailType("loading");
 
     try {
+      // 1. Fetch the enriched data from your new API
       const data = await getEnrichedAdoptions(user.id);
-      setDetailData(data);
+
+      // 2. 🟢 FILTER: Only keep the "Approved" ones for this specific report
+      const successfulAdoptions = data.filter(
+        (app) => app.status === "Approved"
+      );
+
+      setDetailData(successfulAdoptions);
       setDetailType("adoptions");
     } catch (e) {
       console.error("Report Error:", e.response?.status);
+      // If you get a 401, it means the token in sessionStorage might be expired
       toast.error("Unauthorized: Please log in again.");
+      setDetailType(null);
     }
   };
 
