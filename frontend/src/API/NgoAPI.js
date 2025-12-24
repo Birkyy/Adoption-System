@@ -16,9 +16,9 @@ export const getAllPets = async (params = {}) => {
   }
 };
 
-export const getEnrichedAdoptions = async () => {
+export const getEnrichedAdoptions = async (userId) => {
   try {
-    const response = await api.get(`/Adoptions/enriched-list/${user.id}`);
+    const response = await api.get(`/Adoptions/enriched-list/${userId}`);
     return response.data;
   } catch (error) {
     throw error;

@@ -445,7 +445,7 @@ function AdoptionsManager({ user }) {
 
   useEffect(() => {
     setLoading(true);
-    getEnrichedAdoptions()
+    getEnrichedAdoptions(user.id)
       .then((data) => setApps(data))
       .catch(() => toast.error("Report failed"))
       .finally(() => setLoading(false));
