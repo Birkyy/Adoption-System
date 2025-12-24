@@ -40,6 +40,8 @@ import {
 } from "../API/VolunteerAPI";
 
 import { getUserById } from "../API/ProfileAPI";
+import { VolunteerApplicantsCard } from "../components/VolunteerApplicantsCard";
+import { EventParticipantsCard } from "../components/EventParticipantsCard";
 
 export default function NgoDashboard() {
   const { user, logout, loading } = useAuth();
@@ -1413,9 +1415,13 @@ function ReportsManager({ user }) {
 
   // --- Click Handlers for Details ---
   const handleShowAdoptionDetails = async () => {
+    if (approvedAdoptions.length === 0) {
+      setDetailType("adoptions"); // Show empty state
+      return;
+    }
+
     setDetailType("loading");
     try {
-      // Fetch user details for all approved applications
       const details = await Promise.all(
         approvedAdoptions.map(async (app) => {
           try {
@@ -1424,10 +1430,13 @@ function ReportsManager({ user }) {
               ...app,
               applicantName: userData.name,
               applicantEmail: userData.email,
-              applicantPhone: userData.contactInfo,
             };
           } catch (e) {
-            return { ...app, applicantName: "Unknown", applicantEmail: "N/A" };
+            return {
+              ...app,
+              applicantName: "System User",
+              applicantEmail: "N/A",
+            };
           }
         })
       );
@@ -1615,7 +1624,7 @@ function ReportsManager({ user }) {
           color="bg-gradient-to-br from-indigo-500 to-purple-600"
           icon="🏠"
           textColor="text-white"
-          onClick={() => setDetailType("adoptions")}
+          onClick={handleShowAdoptionDetails}
         />
 
         {/* Existing Card 2 */}
