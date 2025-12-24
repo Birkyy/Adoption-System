@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getPetById } from "../API/PetAPI";
 import toast from "react-hot-toast";
 import mammoth from "mammoth";
 
