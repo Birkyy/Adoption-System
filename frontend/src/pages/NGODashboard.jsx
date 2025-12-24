@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { getPetById } from "../API/PetAPI";
 import toast from "react-hot-toast";
 import mammoth from "mammoth";
 
@@ -1415,27 +1416,38 @@ function ReportsManager({ user }) {
 
   // --- Click Handlers for Details ---
   const handleShowAdoptionDetails = async () => {
-    if (approvedAdoptions.length === 0) {
-      setDetailType("adoptions"); // Show empty state
+    const successfulAdoptions = adoptions.filter(
+      (a) => a.status === "Approved"
+    );
+
+    if (successfulAdoptions.length === 0) {
+      setDetailData([]);
+      setDetailType("adoptions");
       return;
     }
 
     setDetailType("loading");
     try {
       const details = await Promise.all(
-        approvedAdoptions.map(async (app) => {
+        successfulAdoptions.map(async (app) => {
           try {
-            const userData = await getUserById(app.applicantId);
+            // 2. Fetch both User and Pet details in parallel for efficiency
+            const [userData, petData] = await Promise.all([
+              getUserById(app.applicantId),
+              getPetById(app.petId),
+            ]);
+
             return {
               ...app,
-              applicantName: userData.name,
+              applicantName: userData.name || userData.username,
               applicantEmail: userData.email,
+              petName: petData.name, // Now we have the real pet name
             };
           } catch (e) {
             return {
               ...app,
-              applicantName: "System User",
-              applicantEmail: "N/A",
+              applicantName: "Unknown User",
+              petName: "Unknown Pet",
             };
           }
         })
@@ -1443,7 +1455,7 @@ function ReportsManager({ user }) {
       setDetailData(details);
       setDetailType("adoptions");
     } catch (e) {
-      toast.error("Failed to load details");
+      toast.error("Failed to load adoption success report");
       setDetailType(null);
     }
   };
@@ -1525,31 +1537,43 @@ function ReportsManager({ user }) {
               // 🔴 DATA EXISTS - RENDER TABLES 🔴
               <>
                 {/* ADOPTIONS TABLE */}
+                {/* ADOPTIONS TABLE - Refined for Success Metrics */}
                 {detailType === "adoptions" && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-50 text-gray-600 font-bold uppercase text-xs">
+                      <thead className="bg-emerald-50 text-emerald-700 font-bold uppercase text-xs">
                         <tr>
-                          <th className="p-4">Applicant</th>
-                          <th className="p-4">Pet</th>
+                          <th className="p-4">Adopter Name</th>
+                          <th className="p-4">Pet Adopted</th>
+                          <th className="p-4">Contact</th>
                           <th className="p-4">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {currentData.map((d) => (
                           <tr
-                            key={d.id || Math.random()}
-                            className="hover:bg-gray-50"
+                            key={d.id}
+                            className="hover:bg-slate-50 transition-colors"
                           >
-                            <td className="p-4 font-bold text-slate-700">
-                              {d.applicantName || "Unknown"}
-                            </td>
-                            <td className="p-4 text-indigo-600">
-                              {d.petName || d.petId}
+                            <td className="p-4">
+                              <div className="font-bold text-slate-700">
+                                {d.applicantName}
+                              </div>
                             </td>
                             <td className="p-4">
-                              <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-bold">
-                                Pending
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">🐾</span>
+                                <span className="font-semibold text-indigo-600">
+                                  {d.petName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-slate-500 text-xs">
+                              {d.applicantEmail}
+                            </td>
+                            <td className="p-4">
+                              <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-extrabold uppercase tracking-wider">
+                                Successfully Adopted
                               </span>
                             </td>
                           </tr>

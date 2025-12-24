@@ -1,4 +1,5 @@
 import { getUserById } from "../API/ProfileAPI";
+import { useState } from "react";
 
 export const EventParticipantsCard = ({ event, user }) => {
   const [expanded, setExpanded] = useState(false);

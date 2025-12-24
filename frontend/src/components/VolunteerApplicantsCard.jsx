@@ -1,4 +1,5 @@
 import { getApplicants } from "../API/VolunteerAPI";
+import { useState } from "react";
 
 export const VolunteerApplicantsCard = ({ listing, user }) => {
   const [expanded, setExpanded] = useState(false);
