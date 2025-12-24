@@ -1496,7 +1496,7 @@ function ReportsManager({ user }) {
     setDetailType("loading");
 
     try {
-      const data = await getEnrichedAdoptions();
+      const data = await getEnrichedAdoptions(user.id);
       setDetailData(data);
       setDetailType("adoptions");
     } catch (e) {

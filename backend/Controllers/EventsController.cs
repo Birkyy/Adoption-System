@@ -17,9 +17,26 @@ namespace backend.Controllers
             _userService = userService;
         }
 
-        // ... (Keep existing GetPublicEvents, GetById, Create, ApproveEvent, UpdateDetails, JoinEvent, Delete, GetPending, GetMy) ...
+        [HttpGet("{id}/participants")]
+        public async Task<ActionResult<List<User>>> GetParticipants(string id)
+        {
+            var ev = await _eventService.GetByIdAsync(id);
+            if (ev == null)
+                return NotFound();
 
-        [HttpGet]
+            var participantDetails = new List<User>();
+            foreach (var userId in ev.ParticipantIds)
+            {
+                var user = await _userService.GetByIdAsync(userId);
+                if (user != null)
+                {
+                    user.Password = ""; // 🛡️ Security: Clear passwords before sending!
+                    participantDetails.Add(user);
+                }
+            }
+            return Ok(participantDetails);
+        }
+
         [HttpGet]
         public async Task<ActionResult<object>> GetPublicEvents(
             [FromQuery] string? search,

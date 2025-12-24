@@ -20,6 +20,14 @@ export const getEventById = async (id) => {
   }
 };
 
+export const getEventParticipants = async (eventId) => {
+  const token = sessionStorage.getItem("token");
+  const response = await axios.get(`${BASE_URL}/Events/${eventId}/participants`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 export const createEventProposal = async (eventData) => {
   try {
     const response = await api.post("/Events", eventData);

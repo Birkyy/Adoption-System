@@ -17,12 +17,14 @@ export const EventParticipantsCard = ({ event, user }) => {
     ) {
       setLoading(true);
       try {
-        const details = await Promise.all(
-          realParticipantIds.map((id) => getUserById(id))
-        );
-        setParticipants(details);
+        // 🟢 CALL THE NEW CONSOLIDATED ENDPOINT
+        const details = await getEventParticipants(event.id);
+
+        // Filter out the NGO itself if needed
+        setParticipants(details.filter((p) => p.id !== user.id));
       } catch (err) {
         console.error("Error fetching participants", err);
+        toast.error("Failed to load participant list");
       } finally {
         setLoading(false);
       }
