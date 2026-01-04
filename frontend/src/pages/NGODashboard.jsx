@@ -951,6 +951,27 @@ function EventsManager({ user }) {
                       </div>
                     </div>
 
+                    {prop.proposalDocuments &&
+                      prop.proposalDocuments.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs font-bold text-slate-500 uppercase mb-2">
+                            Attached Documents:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {prop.proposalDocuments.map((doc, index) => (
+                              <a
+                                key={index}
+                                href={doc} // This assumes 'doc' is a Base64 string or a URL
+                                download={`Proposal_Doc_${index + 1}`}
+                                className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                              >
+                                <span>📄</span> View Document {index + 1}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                     {/* Action Buttons */}
                     <div className="flex gap-3 mt-6">
                       <button

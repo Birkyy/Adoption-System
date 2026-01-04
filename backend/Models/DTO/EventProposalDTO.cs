@@ -11,5 +11,6 @@ namespace backend.Models.DTO
         public string ProposerName { get; set; } = null!;
         public string ProposerEmail { get; set; } = null!;
         public string Status { get; set; } = "Pending";
+        public List<string> ProposalDocuments { get; set; } = new List<string>();
     }
 }

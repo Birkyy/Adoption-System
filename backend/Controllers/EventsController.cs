@@ -202,6 +202,7 @@ namespace backend.Controllers
                         ProposerName = proposer?.Name ?? proposer?.Username ?? "Unknown User",
                         ProposerEmail = proposer?.Email ?? "N/A",
                         Status = ev.Status,
+                        ProposalDocuments = ev.ProposalDocuments ?? new List<string>(),
                     }
                 );
             }
