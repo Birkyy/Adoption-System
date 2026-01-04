@@ -1,4 +1,5 @@
 using backend.Models.Domain;
+using backend.Models.DTO;
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -176,12 +177,36 @@ namespace backend.Controllers
         }
 
         [HttpGet("pending")]
-        public async Task<ActionResult<List<Event>>> GetPendingProposals([FromQuery] string ngoId)
+        public async Task<ActionResult<List<EventProposalDTO>>> GetPendingProposals(
+            [FromQuery] string ngoId
+        )
         {
             if (string.IsNullOrEmpty(ngoId))
                 return BadRequest("NgoId is required.");
+
             var events = await _eventService.GetPendingByNgoIdAsync(ngoId);
-            return Ok(events);
+            var enrichedProposals = new List<EventProposalDTO>();
+
+            foreach (var ev in events)
+            {
+                var proposer = await _userService.GetByIdAsync(ev.CreatedById);
+                enrichedProposals.Add(
+                    new EventProposalDTO
+                    {
+                        Id = ev.Id!,
+                        Title = ev.Title,
+                        Description = ev.Description,
+                        Location = ev.Location ?? "No Location",
+                        EventDate = ev.EventDate,
+                        ImageUrl = ev.ImageUrl ?? "",
+                        ProposerName = proposer?.Name ?? proposer?.Username ?? "Unknown User",
+                        ProposerEmail = proposer?.Email ?? "N/A",
+                        Status = ev.Status,
+                    }
+                );
+            }
+
+            return Ok(enrichedProposals);
         }
 
         [HttpGet("my-events")]
