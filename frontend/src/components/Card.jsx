@@ -55,7 +55,6 @@ const Card = ({ content }) => {
           <p className="text-[8px] sm:text-[10px] md:text-xs text-gray-400 font-medium">
             {content.age}
           </p>
-          <p className="text gray-400">Kuching</p>
         </div>
       </div>
     </button>
